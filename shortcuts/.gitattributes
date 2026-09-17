@@ -1,0 +1,5 @@
+*.cherri text eol=lf
+*.command text eol=lf
+*.shortcut -text
+# The publisher validates this source against its recorded byte-level hash.
+ShareMe.cherri -text whitespace=cr-at-eol

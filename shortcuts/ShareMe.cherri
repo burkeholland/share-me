@@ -1,0 +1,315 @@
+#define name Share Me
+#define color blue
+#define inputs file, image, media, pdf, text, url
+#define from sharesheet
+
+#include 'actions/text'
+
+// WFInput is the independent variable-picker stdin parameter, NOT WFSSHScript.
+action 'runsshscript' ssh(text host: 'WFSSHHost', text port: 'WFSSHPort', text user: 'WFSSHUser', text command: 'WFSSHScript', variable stdin: 'WFInput'): variable {
+    "WFSSHAuthenticationType": "SSH Key"
+}
+
+action 'documentpicker.open' loadConfiguration(): variable {
+    "WFFileStorageService": "iCloud Drive",
+    "WFShowFilePicker": false,
+    "WFGetFilePath": "/ShareMe.json",
+    "WFFileErrorIfNotFound": false
+}
+
+action 'documentpicker.save' saveConfiguration(variable config: 'WFInput'): variable {
+    "WFFileStorageService": "iCloud Drive",
+    "WFAskWhereToSave": false,
+    "WFFileDestinationPath": "/ShareMe.json",
+    "WFSaveFileOverwrite": true
+}
+
+action 'properties.files' fileName(variable file: 'WFInput'): text {
+    "WFContentItemPropertyName": "Name"
+}
+
+action 'properties.files' originalSize(variable file: 'WFInput'): variable {
+    "WFContentItemPropertyName": "File Size"
+}
+
+action 'format.filesize' byteSize(variable size: 'WFFileSize'): number {
+    "WFFileSizeFormat": "Bytes",
+    "WFFileSizeIncludeUnits": false
+}
+
+action 'base64encode' encodeFilename(variable name: 'WFInput'): text {
+    "WFEncodeMode": "Encode",
+    "WFBase64LineBreakMode": "None"
+}
+
+const emptyStdin = text("")
+@items = ShortcutInput
+if !@items {
+    alert("To connect: scan your PC's Share Me QR, then choose Add to share sheet / Connect Shortcut. To send: select files, images, media, a PDF, text, or URLs and choose Share Me in the share sheet. Nothing is read from your clipboard.", "Share Me: setup and use")
+    stop()
+}
+const itemCount = count(@items)
+if itemCount > 50 {
+    alert("Share at most 50 items at a time. No connection was made.", "Share Me: too many items")
+    stop()
+}
+
+@isSetup = 0
+@configurationJSON = ""
+if itemCount == 1 {
+    const firstItem = getFirstItem(@items)
+    const firstType = typeOf(firstItem)
+    if firstType == "Text" {
+        const possibleSetup = getText(firstItem)
+        const setupPrefix = matchText('\Ashareme-setup-v1:', possibleSetup, true)
+        if setupPrefix {
+            const setupJSON = replaceText('\Ashareme-setup-v1:', "", possibleSetup, true, true)
+            @configurationJSON = setupJSON
+            @isSetup = 1
+        }
+    }
+}
+
+if @isSetup == 0 {
+    const storedConfiguration = loadConfiguration()
+    if !storedConfiguration {
+        alert("Scan the PC's Share Me QR, then choose Add to share sheet / Connect Shortcut. Install the publisher's Share Me template first; you do not need to edit any actions.", "Share Me: connect your PC")
+        stop()
+    }
+    @configurationJSON = getText(storedConfiguration)
+}
+
+// Validate the original JSON shape before native dictionary/content coercions can
+// flatten one-element arrays or turn Boolean values into numbers.
+const configurationCharacters = count(@configurationJSON, "Characters")
+if configurationCharacters > 4096 {
+    alert("The configuration is too large. Scan the PC QR again.", "Share Me: invalid configuration")
+    stop()
+}
+const validConfigurationShape = matchText('\A[ \t\r\n]*\{[ \t\r\n]*(?:"version"[ \t\r\n]*:[ \t\r\n]*1|"port"[ \t\r\n]*:[ \t\r\n]*49322|"(?:host|name|fingerprint|enrollment)"[ \t\r\n]*:[ \t\r\n]*"(?:[^"\\\x00-\x1F]|\\["\\/bfnrt]|\\u[0-9A-Fa-f]{4})*")[ \t\r\n]*(?:,[ \t\r\n]*(?:"version"[ \t\r\n]*:[ \t\r\n]*1|"port"[ \t\r\n]*:[ \t\r\n]*49322|"(?:host|name|fingerprint|enrollment)"[ \t\r\n]*:[ \t\r\n]*"(?:[^"\\\x00-\x1F]|\\["\\/bfnrt]|\\u[0-9A-Fa-f]{4})*")[ \t\r\n]*)*\}[ \t\r\n]*\z', "{@configurationJSON}", true)
+if !validConfigurationShape {
+    alert("Expected a flat Share Me configuration object with version 1, port 49322, and text fields. Scan the PC QR again.", "Share Me: invalid configuration")
+    stop()
+}
+@configuration = getDictionary(@configurationJSON)
+
+// Shared validation gates setup AND subsequent use before the first connection.
+const configurationKeys = getKeys(@configuration)
+const configurationKeyCount = count(configurationKeys)
+if @isSetup == 1 {
+    if configurationKeyCount != 6 {
+        alert("Invalid setup fields. Scan the PC QR again.", "Share Me: invalid configuration")
+        stop()
+    }
+} else {
+    if configurationKeyCount != 5 {
+        alert("Invalid saved settings. Scan the PC QR and Connect Shortcut again.", "Share Me: invalid configuration")
+        stop()
+    }
+}
+const version = getValue(@configuration, "version")
+const host = getValue(@configuration, "host")
+const port = getValue(@configuration, "port")
+const pcName = getValue(@configuration, "name")
+const fingerprint = getValue(@configuration, "fingerprint")
+const versionType = typeOf(version)
+const hostType = typeOf(host)
+const portType = typeOf(port)
+const nameType = typeOf(pcName)
+const fingerprintType = typeOf(fingerprint)
+if versionType != "Number" || hostType != "Text" || portType != "Number" || nameType != "Text" || fingerprintType != "Text" {
+    alert("Configuration fields have invalid types. Scan the PC QR again.", "Share Me: invalid configuration")
+    stop()
+}
+if version.number != 1 || port.number != 49322 {
+    alert("Only Share Me version 1 on port 49322 is supported.", "Share Me: invalid configuration")
+    stop()
+}
+const validHost = matchText('\A(?:10(?:\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|192\.168(?:\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){2}|172\.(?:1[6-9]|2[0-9]|3[01])(?:\.(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){2})\z', "{host}", true)
+if !validHost {
+    alert("The PC address must be a private IPv4 address, not a URL or hostname.", "Share Me: invalid address")
+    stop()
+}
+const validName = matchText('\A[^\x00-\x1F\x7F]{1,128}\z', "{pcName}", true)
+if !validName {
+    alert("The PC display name is invalid.", "Share Me: invalid configuration")
+    stop()
+}
+const validFingerprint = matchText('\ASHA256:[A-Za-z0-9+/]{43}\z', "{fingerprint}", true)
+if !validFingerprint {
+    alert("A SHA256 SSH host fingerprint is required.", "Share Me: invalid configuration")
+    stop()
+}
+
+if @isSetup == 1 {
+    const enrollment = getValue(@configuration, "enrollment")
+    const enrollmentType = typeOf(enrollment)
+    if enrollmentType != "Text" {
+        alert("Invalid one-time enrollment. Scan the PC QR again.", "Share Me: invalid setup")
+        stop()
+    }
+    const validEnrollment = matchText('\A[A-Za-z0-9_-]{43}\z', "{enrollment}", true)
+    if !validEnrollment {
+        alert("Invalid one-time enrollment. Scan the PC QR again.", "Share Me: invalid setup")
+        stop()
+    }
+    confirm("Connect this iPhone to {pcName} at {host}:{port}?\n\nExpected SSH host fingerprint:\n{fingerprint}\n\nCompare this fingerprint with SSH's first-connection prompt AND the PC. Cancel if it differs or cannot be compared. This trusts the PC with future shared items. No file is sent during setup.", "Share Me: confirm your PC")
+    const setupOutput = ssh("{host}", "{port}", "setup-{enrollment}", "shareme-v1 setup", emptyStdin)
+    const setupResponse = getDictionary(setupOutput)
+    const setupResponseKeys = getKeys(setupResponse)
+    if setupResponseKeys.text contains "error" {
+        alert("The PC rejected setup. Scan the QR and try Connect Shortcut again.", "Share Me: setup failed")
+        stop()
+    }
+    const setupStatus = getValue(setupResponse, "status")
+    const validSetupStatus = matchText('\Aready\z', "{setupStatus}", true)
+    if !validSetupStatus {
+        alert("The PC did not confirm ready. Settings were not saved.", "Share Me: setup failed")
+        stop()
+    }
+    // Rebuild an allowlisted dictionary: never persist the incoming setup object.
+    const safeConfiguration = {
+        "version": 1,
+        "host": "{host}",
+        "port": 49322,
+        "name": "{pcName}",
+        "fingerprint": "{fingerprint}"
+    }
+    const safeConfigurationJSON = getText(safeConfiguration)
+    const savedConfiguration = saveConfiguration(safeConfigurationJSON)
+    if !savedConfiguration {
+        alert("The PC enrolled this device, but settings were not saved. Check Files/iCloud Drive permission and reconnect.", "Share Me: settings not saved")
+        stop()
+    }
+    alert("Connected to {pcName}. Select an item and use Share Me in its share sheet. Settings contain only the PC name, address, port, version, and public fingerprint.", "Share Me: connected")
+    stop()
+}
+
+@sent = 0
+for item in @items {
+    const itemType = typeOf(@item)
+    @kind = "file"
+    @textToSend = ""
+    if itemType == "Text" || itemType == "URL" {
+        @kind = "text"
+        @textToSend = getText(@item)
+        const textCharacters = count(@textToSend, "Characters")
+        if textCharacters > 65536 {
+            alert("Text is limited to 64 KiB of UTF-8. This text is too long. The PC also checks the exact byte length.", "Share Me: text too large")
+            stop()
+        }
+        const textRequest = {
+            "kind": "text",
+            "name": "Text",
+            "size": -1,
+            "text": "{@textToSend}"
+        }
+        @requestJSON = getText(textRequest)
+    } else {
+        const itemName = fileName(@item)
+        if !itemName {
+            alert("The shared file has no name. No upload was attempted.", "Share Me: missing filename")
+            stop()
+        }
+        const originalFileSize = originalSize(@item)
+        const fileBytes = byteSize(originalFileSize)
+        if fileBytes > 2147483648 {
+            alert("The PC accepts files up to 2 GiB. iOS may fail on much smaller files; large-file reliability is not guaranteed.", "Share Me: file too large")
+            stop()
+        }
+        // Only the filename is encoded. The original file remains @item.
+        @encodedName = encodeFilename(itemName)
+        const fileRequest = {
+            "kind": "file",
+            "name": "{itemName}",
+            "size": -1
+        }
+        @requestJSON = getText(fileRequest)
+    }
+    const requestOutput = ssh("{host}", "{port}", "shareme", "shareme-v1 request", @requestJSON)
+    const request = getDictionary(requestOutput)
+    const requestKeys = getKeys(request)
+    if requestKeys.text contains "error" {
+        alert("The PC rejected the transfer request. No file was uploaded.", "Share Me: request failed")
+        stop()
+    }
+    const requestID = getValue(request, "id")
+    const requestToken = getValue(request, "token")
+    const initialStatus = getValue(request, "status")
+    const validRequestID = matchText('\A[0-9a-f]{32}\z', "{requestID}", true)
+    if !validRequestID {
+        alert("The PC returned an invalid request ID. No upload was attempted.", "Share Me: invalid response")
+        stop()
+    }
+    const validRequestToken = matchText('\A[A-Za-z0-9_-]{43}\z', "{requestToken}", true)
+    if !validRequestToken {
+        alert("The PC returned an invalid request token. No upload was attempted.", "Share Me: invalid response")
+        stop()
+    }
+    const validInitialStatus = matchText('\Apending\z', "{initialStatus}", true)
+    if !validInitialStatus {
+        alert("The PC did not return a pending request. No upload was attempted.", "Share Me: invalid response")
+        stop()
+    }
+    @status = "pending"
+    repeat poll for 120 {
+        if @status == "pending" {
+            wait(1)
+            const pollOutput = ssh("{host}", "{port}", "shareme", "shareme-v1 status {requestID} {requestToken}", emptyStdin)
+            const pollResponse = getDictionary(pollOutput)
+            const pollKeys = getKeys(pollResponse)
+            if pollKeys.text contains "error" {
+                alert("The PC rejected the approval check. No upload was attempted.", "Share Me: approval check failed")
+                stop()
+            }
+            const pollStatus = getValue(pollResponse, "status")
+            const validPollStatus = matchText('\A(?:pending|accepted|declined|expired|cancelled)\z', "{pollStatus}", true)
+            if !validPollStatus {
+                alert("The PC returned an invalid approval status. No upload was attempted.", "Share Me: invalid response")
+                stop()
+            }
+            @status = "{pollStatus}"
+            if @status == "declined" || @status == "expired" || @status == "cancelled" {
+                alert("The transfer was {@status}. Nothing was uploaded for this item.", "Share Me: not accepted")
+                stop()
+            }
+            if @status != "pending" && @status != "accepted" {
+                alert("The PC returned an unknown approval status. No upload was attempted.", "Share Me: invalid response")
+                stop()
+            }
+        }
+        nothing()
+    }
+    if @status != "accepted" {
+        const cancelOutput = ssh("{host}", "{port}", "shareme", "shareme-v1 cancel {requestID} {requestToken}", emptyStdin)
+        const cancelResponse = getDictionary(cancelOutput)
+        const cancelKeys = getKeys(cancelResponse)
+        if cancelKeys.text contains "error" {
+            alert("Approval timed out and cancellation failed. Nothing was uploaded. The PC will expire the request.", "Share Me: cancellation failed")
+            stop()
+        }
+        alert("The PC did not accept within 120 approval checks. Cancellation was requested; nothing was uploaded.", "Share Me: timed out")
+        stop()
+    }
+    if @kind == "text" {
+        @receiptOutput = ssh("{host}", "{port}", "shareme", "shareme-v1 text {requestID} {requestToken}", @textToSend)
+    } else {
+        @receiptOutput = ssh("{host}", "{port}", "shareme", "shareme-v1 upload {requestID} {requestToken} {@encodedName}", @item)
+    }
+    const receipt = getDictionary(@receiptOutput)
+    const receiptKeys = getKeys(receipt)
+    if receiptKeys.text contains "error" {
+        alert("The PC reported a transfer error. Delivery is not confirmed.", "Share Me: transfer failed")
+        stop()
+    }
+    const receiptID = getValue(receipt, "id")
+    if !receiptID {
+        alert("The PC did not return a transfer receipt. Delivery is not confirmed.", "Share Me: missing receipt")
+        stop()
+    }
+    @sent += 1
+    nothing()
+}
+if @sent > 0 {
+    showNotification("Sent {@sent} item(s) to {pcName}.", "Share Me", false)
+}

@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "shortcutName": "Share Me",
+  "transport": "ssh-v1",
+  "setupPrefix": "shareme-setup-v1:",
+  "protocolPort": 49322,
+  "compiler": "github.com/electrikmilk/cherri@dc82114f346f77e5cf04987cb0ee4e781302fc32",
+  "compilerFlags": [
+    "--skip-sign",
+    "--no-ansi"
+  ],
+  "sourceSha256": "f9fc23596e65aea3a6548e96f2957ce53b579694c25bb315fb00599373d392d3",
+  "unsignedArtifact": "ShareMe.unsigned.shortcut",
+  "unsignedSha256": "8376f2264afb235a6c87f2f3934584fd01b994556c45640bb5614ca0cb6f0987",
+  "staticValidation": "passed",
+  "appleSigned": false,
+  "physicalIPhoneVerified": false,
+  "installationURL": null
+}
