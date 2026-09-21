@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en" data-accent="coral" data-surface="flat" data-geometry="sharp">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Transfer photos, files, and text between an iPhone browser and a Windows app on the same local network.">
+  <meta name="theme-color" content="#f5f7f8">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self'; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'self'; form-action 'none'">
+  <meta property="og:title" content="Share Me - File transfers between iPhone and Windows">
+  <meta property="og:description" content="Transfer photos, files, and text between an iPhone browser and a Windows app on the same local network.">
+  <meta property="og:type" content="website">
+  <title>Share Me - File transfers between iPhone and Windows</title>
+  <link rel="icon" href="./assets/mark.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="./assets/postrboard.css">
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./app.mjs"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+  <svg class="symbols" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <symbol id="i-moon" viewBox="0 0 24 24"><path d="M20 14A8 8 0 0 1 10 4a8 8 0 1 0 10 10Z"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1 1m12 12 1 1M5 19l1-1M18 6l1-1"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M7 17 17 7M7 7h10v10"/></symbol>
+    </defs>
+  </svg>
+  <div class="page-wrap">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Share Me home"><img src="./assets/mark.svg" width="36" height="36" alt=""><span>Share Me</span></a>
+      <nav aria-label="Main navigation">
+        <a href="#preview">Preview</a>
+        <a href="#setup">Setup</a>
+        <a href="https://github.com/burkeholland/share-me">Source<span aria-hidden="true"> &#8599;</span></a>
+        <button class="theme-button" id="theme" type="button" aria-label="Use dark theme" hidden><svg class="icon" aria-hidden="true"><use href="#i-moon"/></svg></button>
+      </nav>
+    </header>
+    <main id="main">
+      <section class="intro" aria-labelledby="headline">
+        <div>
+          <h1 id="headline">Transfer files between<br>iPhone and Windows.</h1>
+          <p class="lead">A Windows app and a phone web page.</p>
+          <p class="platform-note">Photos, files, and text over your local network.</p>
+        </div>
+        <div class="intro-action">
+          <a class="btn btn-primary build-link" href="https://github.com/burkeholland/share-me#build">Build for Windows<svg class="icon" aria-hidden="true"><use href="#i-arrow"/></svg></a>
+          <p class="release-note">Open-source preview &middot; Windows x64<br>Windows download not published yet.</p>
+        </div>
+      </section>
+      <section class="preview" id="preview" aria-labelledby="preview-title">
+        <div class="preview-heading">
+          <h2 id="preview-title">The app</h2>
+          <span class="screenshot-label">App screenshots &middot; Example content</span>
+        </div>
+        <div class="preview-desk">
+          <figure class="app-panel">
+            <figcaption>Share Me on Windows</figcaption>
+            <div class="app-frame">
+              <img class="app-screenshot screenshot-light" src="./assets/app-light.png" width="960" height="640" alt="Share Me's Windows inbox with example photos, files, and text received from a phone.">
+              <img class="app-screenshot screenshot-dark" src="./assets/app-dark.png" width="960" height="640" alt="Share Me's Windows inbox with example photos, files, and text received from a phone." loading="lazy">
+            </div>
+          </figure>
+          <figure class="phone-panel">
+            <figcaption>The phone page</figcaption>
+            <div class="phone-frame">
+              <img class="phone-screenshot screenshot-light" src="./assets/phone-light.png" width="390" height="700" alt="Share Me's phone page with Photos, Files, and a text field, waiting for approval on the PC.">
+              <img class="phone-screenshot screenshot-dark" src="./assets/phone-dark.png" width="390" height="700" alt="Share Me's phone page with Photos, Files, and a text field, waiting for approval on the PC." loading="lazy">
+            </div>
+          </figure>
+        </div>
+        <p class="preview-note">To send from Windows, choose <strong>Send</strong>, then <strong>Accept Transfer</strong> on your phone.</p>
+      </section>
+      <section class="setup-section" id="setup" aria-labelledby="setup-title">
+        <div class="section-intro">
+          <h2 id="setup-title">Setup</h2>
+          <p>Connect both devices to the same network. Keep your PC awake and the phone page open.</p>
+          <a class="source-link" href="https://github.com/burkeholland/share-me#use">Setup guide<span aria-hidden="true"> &#8599;</span></a>
+        </div>
+        <ol class="setup-steps">
+          <li><span class="step-number" aria-hidden="true">1</span><div><h3>Open Share Me</h3><p>Run <code>ShareMe.exe</code> on Windows. Allow private-network access if Windows asks.</p></div></li>
+          <li><span class="step-number" aria-hidden="true">2</span><div><h3>Scan with your iPhone</h3><p>Use Camera to open the QR link in Safari. Click <strong>Connect</strong> on Windows.</p></div></li>
+          <li><span class="step-number" aria-hidden="true">3</span><div><h3>Send files or text</h3><p>Choose photos or files, or paste text. Click <strong>Accept</strong> on Windows.</p></div></li>
+        </ol>
+      </section>
+      <section class="boundaries" aria-labelledby="boundaries-title">
+        <div class="section-intro"><h2 id="boundaries-title">How transfers work</h2><p>Files and text use a direct, encrypted connection between the devices.</p></div>
+        <div class="boundary-details">
+          <details><summary>What goes through the cloud?</summary><p>The phone page and encrypted connection setup use Cloudflare. Files and transfer text travel directly between paired devices over encrypted WebRTC. Internet access is needed to get connected; there is no cloud file-relay fallback.</p></details>
+          <details><summary>What happens before a file is saved?</summary><p>You accept it on Windows. Share Me then checks the file, scans it with Windows Defender, and applies Windows attachment protection before saving. Files never open automatically. No scanner catches every threat; only accept files you expect.</p></details>
+          <details><summary>Can I send from the iPhone share sheet?</summary><p>A reusable Apple Shortcut is in development. It isn't published yet; Apple signing and real-iPhone setup checks are still required. Use the phone page for now.</p></details>
+        </div>
+      </section>
+    </main>
+    <footer class="site-footer">
+      <a class="brand" href="./"><img src="./assets/mark.svg" width="28" height="28" alt="">Share Me</a>
+      <div><a href="https://github.com/burkeholland/share-me">GitHub</a><a href="https://github.com/burkeholland/share-me#boundaries">Privacy</a><a href="./assets/NOTICE.txt">Credits</a></div>
+    </footer>
+  </div>
+</body>
+</html>

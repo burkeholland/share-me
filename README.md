@@ -114,6 +114,22 @@ The build recognizes portable Go at `.tools\go\bin` and uses **Go 1.25.14** with
 
 The build reads the publisher-owned HTTPS origin from `scripts\service-url.json`; `-ServiceURL https://your-service.workers.dev` overrides it. To publish your own service, build the frontend, run `node scripts\stage-hosted.mjs`, and follow `service\README.md`. The Worker uses the account's existing plan limits; no paid upgrade is required by the configuration.
 
+## Landing page
+
+The standalone `site` directory follows the compact layout of [Mirror Me](https://burkeholland.github.io/mirror-me/): app screenshots, setup, and source links. It is separate from the Cloudflare phone application and never opens a receiver or connects to a paired phone. The public Windows download and Apple Shortcut are not advertised as available until published.
+
+Preview and check it from the repository root, using the existing frontend Playwright dependencies:
+
+```powershell
+node site\tests\serve.mjs
+node --test site\tests\site.test.mjs
+node site\tests\browser-review.mjs
+```
+
+The preview is at `http://127.0.0.1:4173/`. Publish the static contents of `site` to GitHub Pages or another static host; no frontend build is required to serve it. The site uses Postrboard CSS and Google Fonts with system fallbacks. It has no analytics, embedded app, or transfer API calls.
+
+After changing the application UI, rebuild the frontend and refresh the committed light/dark screenshots with `node site\tests\capture.mjs`. Captures use example content and a harmless `example.invalid` QR, never a live pairing invitation or personal files. Screenshot source hashes use normalized line endings; image and vendored CSS hashes preserve exact bytes. The static checks reject stale captures.
+
 ## Development checks
 
 ```powershell
