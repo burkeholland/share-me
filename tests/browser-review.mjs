@@ -31,7 +31,11 @@ try {
         const visible = node => node.getClientRects().length > 0;
         const ids = [...document.querySelectorAll('[id]')].map(node => node.id);
         const screenshots = [...document.querySelectorAll('.app-screenshot, .phone-screenshot')].filter(visible);
+        const preview = document.querySelector('#preview');
+        const previewStyle = getComputedStyle(preview);
         return {
+          previewDecoration: ['borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft'].map(property => previewStyle[property]),
+          previewWrapperContent: preview.querySelectorAll('h2, .preview-heading, .preview-note').length,
           mode: document.documentElement.dataset.mode,
           overflow: document.documentElement.scrollWidth > innerWidth,
           duplicates: ids.filter((id, i) => ids.indexOf(id) !== i),
@@ -48,6 +52,8 @@ try {
       assert.deepEqual(state.duplicates, [], label + ': duplicate IDs');
       assert.equal(state.phoneVisible, width >= 768, label + ': phone layout');
       assert.equal(state.previewControls, 0, label + ': previews remain static');
+      assert.equal(state.previewWrapperContent, 0, label + ': no screenshot wrapper heading or footer');
+      assert.deepEqual(state.previewDecoration, Array(8).fill('0px'), label + ': no outer screenshot border or padding');
       for (const image of state.images) {
         assert.match(image.src, new RegExp(`-${state.mode || 'light'}\\.png$`));
         assert.ok(image.alt.length > 20);
@@ -83,7 +89,7 @@ try {
         const staticPage = await noJS.newPage();
         await staticPage.goto(local.url);
         assert.equal(await staticPage.locator('#theme').isVisible(), false);
-        assert.equal(await staticPage.getByRole('link', { name: 'Build for Windows' }).isVisible(), true);
+        assert.equal(await staticPage.getByRole('link', { name: 'Download', exact: true }).isVisible(), true);
         assert.equal(await staticPage.locator('.app-screenshot.screenshot-dark').isVisible(), true);
       } finally { await noJS.close(); }
       assert.deepEqual(errors, [], name + ': runtime errors');

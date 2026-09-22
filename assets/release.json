@@ -1,0 +1,11 @@
+{
+  "version": "0.3.0",
+  "tag": "v0.3.0-preview.1",
+  "fileName": "ShareMe-0.3.0-windows-x64.zip",
+  "downloadURL": "https://github.com/burkeholland/share-me/releases/download/v0.3.0-preview.1/ShareMe-0.3.0-windows-x64.zip",
+  "releaseURL": "https://github.com/burkeholland/share-me/releases/tag/v0.3.0-preview.1",
+  "bytes": 7005346,
+  "sha256": "72558ef5ce47f90cc133327d01aef4b06416cf52e6e397b014fd162ae80a9645",
+  "executableBytes": 17478656,
+  "sourceCommit": "e27f9c7be8a124939a2012273aa9201093772487"
+}
