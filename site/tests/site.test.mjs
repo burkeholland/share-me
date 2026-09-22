@@ -8,12 +8,15 @@ import { startServer } from './serve.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const html = await readFile(resolve(root, 'site', 'index.html'), 'utf8');
+const release = JSON.parse(await readFile(resolve(root, 'site', 'assets', 'release.json'), 'utf8'));
 
 test('the landing page is static, accessible, and separate from the transfer app', () => {
   assert.match(html, /lang="en"/);
   assert.match(html, /name="viewport"/);
   assert.match(html, /Skip to content/);
-  assert.match(html, /Example content/);
+  assert.match(html, /<figcaption>Desktop<\/figcaption>/);
+  assert.match(html, /<figcaption>Mobile<\/figcaption>/);
+  assert.match(html, /with example photos/);
   assert.doesNotMatch(html, /<iframe|<input|<textarea|<form|onload=|onclick=/i);
   assert.doesNotMatch(html, /shareme-signaling|window\.shareMePeer|pair=|enrollment|data:image/i);
   assert.equal((html.match(/<h1\b/g) || []).length, 1);
@@ -25,17 +28,26 @@ test('the landing page is static, accessible, and separate from the transfer app
 
 test('page copy describes the application without slogans', () => {
   assert.match(html, /<h1 id="headline">Transfer files between<br>iPhone and Windows\.<\/h1>/);
-  assert.match(html, /A Windows app and a phone web page\./);
-  assert.match(html, /<h2 id="preview-title">The app<\/h2>/);
+  assert.ok(html.includes(`<p class="lead">No mobile app required. Tiny ${Number((release.bytes / 1000000).toFixed(1))}MB download.</p>`));
+  assert.equal((html.match(/class="lead"/g) || []).length, 1);
+  assert.doesNotMatch(html, /platform-note/);
+  assert.doesNotMatch(html, /preview-title|preview-heading|preview-note/);
+  assert.match(html, /<section class="preview-desk" id="preview" aria-label="App screenshots">/);
   assert.match(html, /<h2 id="setup-title">Setup<\/h2>/);
   assert.match(html, /<h2 id="boundaries-title">How transfers work<\/h2>/);
   assert.doesNotMatch(html, /Your iPhone files|Scan\. Send\. Accept\.|That's the setup|take the direct route|It goes both ways|without the extra app/i);
 });
 
-test('no nonexistent release or unverified Shortcut is advertised', () => {
-  assert.match(html, /Build for Windows/);
-  assert.match(html, /Windows download not published yet/);
-  assert.doesNotMatch(html, /releases\/download|Download for Windows|shortcuts:\/\//);
+test('download points to the published Windows preview, not an unverified Shortcut', () => {
+  assert.equal(release.downloadURL, `https://github.com/burkeholland/share-me/releases/download/${release.tag}/${release.fileName}`);
+  assert.equal(release.releaseURL, `https://github.com/burkeholland/share-me/releases/tag/${release.tag}`);
+  assert.ok(html.includes(`href="${release.downloadURL}">Download<svg`));
+  assert.ok(html.includes(`href="${release.releaseURL}"`));
+  assert.match(release.sha256, /^[a-f0-9]{64}$/);
+  assert.match(release.sourceCommit, /^[a-f0-9]{40}$/);
+  assert.ok(release.bytes > 0 && release.executableBytes > release.bytes);
+  assert.match(html, /Unsigned preview/);
+  assert.doesNotMatch(html, /Build for Windows|Windows download not published yet|shortcuts:\/\//);
   assert.match(html, /It isn&apos;t published yet|It isn't published yet/);
   assert.match(html, /real-iPhone setup checks/);
   assert.match(html, /#boundaries/);

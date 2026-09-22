@@ -4,7 +4,7 @@ Send files and text between Windows and an iPhone browser. **Wails 2 + Go**, one
 
 ## Use
 
-1. Open `build\bin\ShareMe.exe`.
+1. [Download the Windows x64 preview](https://github.com/burkeholland/share-me/releases/download/v0.3.0-preview.1/ShareMe-0.3.0-windows-x64.zip), extract the ZIP, and run `ShareMe.exe`. No build tools are required. The executable is unsigned; do not bypass Windows trust warnings. [Release notes and checksum](https://github.com/burkeholland/share-me/releases/tag/v0.3.0-preview.1).
 2. Scan its QR code with the iPhone Camera app.
 3. Click **Connect** on Windows to remember this phone's browser.
 4. On the phone, choose photos or files, or send text. Click **Accept** on Windows.
@@ -114,9 +114,11 @@ The build recognizes portable Go at `.tools\go\bin` and uses **Go 1.25.14** with
 
 The build reads the publisher-owned HTTPS origin from `scripts\service-url.json`; `-ServiceURL https://your-service.workers.dev` overrides it. To publish your own service, build the frontend, run `node scripts\stage-hosted.mjs`, and follow `service\README.md`. The Worker uses the account's existing plan limits; no paid upgrade is required by the configuration.
 
+For a downloadable package, build with `-OutputName ShareMe-0.3.0-windows-x64.exe`, then run `scripts\package-release.ps1 -SourceCommit <40-character-application-source-commit>`. The script validates the production build and packages `ShareMe.exe`, instructions, build metadata, and licenses for Go and every linked module in a ZIP, with a separate SHA-256 checksum. It does not publish, commit, or push anything. Package outputs stay under ignored `build\bin`. Use a source commit matching the built application, and update the landing page's release metadata and measured archive size when publishing a new version.
+
 ## Landing page
 
-The standalone `site` directory follows the compact layout of [Mirror Me](https://burkeholland.github.io/mirror-me/): app screenshots, setup, and source links. It is separate from the Cloudflare phone application and never opens a receiver or connects to a paired phone. The public Windows download and Apple Shortcut are not advertised as available until published.
+The standalone `site` directory follows the compact layout of [Mirror Me](https://burkeholland.github.io/mirror-me/): app screenshots, setup, and source links. It is separate from the Cloudflare phone application and never opens a receiver or connects to a paired phone. Download links to the published Windows preview; the Apple Shortcut remains unpublished. `site\assets\release.json` records the published archive's URL, size, checksum, and application-source commit.
 
 Preview and check it from the repository root, using the existing frontend Playwright dependencies:
 
