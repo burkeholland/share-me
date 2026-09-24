@@ -14,21 +14,20 @@
   "sources": {
     "frontend/index.html": "b5b608159a817818c4f633c0a4aecdb57783443b145089505cdd2eb329942adf",
     "frontend/phone.html": "7a1748cde46b7fb574881d20b5bce47486ffd50c5e5d2d27dc55ffcfbbcd0bb7",
-    "frontend/src/desktop.js": "cc9abfd87d64f2736e2a6822113040c4e01fd27824c12c583fb76882d45c475f",
-    "frontend/src/phone.js": "918336ad1e0f86400a9a7b5272e735dff67cac781459c2a4135e59612a67128d",
+    "frontend/src/desktop.js": "86e74cf8fd6393126381aee452336c7a86bc84c2104e8caacb847b9236660717",
+    "frontend/src/phone.js": "485598245534f731be3e2059f9e56711d8d8451a05ad5aea38b8e73e40a31e04",
     "frontend/src/shared.js": "e14a1901101a23263e81f1699cd91d9ef5bae0ca1fc97d812bc034b653bd4376",
-    "frontend/src/install.js": "6e51b00364b83b9e88aa553ea068d6573368a06e2830031d803e04a0c644dd21",
     "frontend/src/theme.css": "35a93bcaf897cda892fd133305205116d06b34af42abd3b58506078ee0d74059",
-    "frontend/src/style.css": "6fc382bb5e640ab9ccb3301d5eb2fba7a5b0b6f3490d7537fb835ccccadea651",
+    "frontend/src/style.css": "f28d9c14619e619f80e572db8885fcd8997b9ac30ebb83628efcd52311f3c631",
     "frontend/public/theme-init.js": "50924d7545cb02e9ac28c27be1e58ee171e9a4b448c397d52109539061985317",
     "frontend/vite.config.js": "7ec5131c89a4f3cfbc5f81cb679be0033d2d15a1aced308dc8371c6c1834dab3",
-    "site/tests/capture.mjs": "3420c4a9ad8f45fdbe38d7e2f119229c68886a348d105618c748af8caab2cb74",
+    "site/tests/capture.mjs": "f6bff0c583b7d29913534ec32434ee77d924621849f21a9f49168d571e78f76e",
     "site/assets/example-qr.png": "1acb4b271640f3ae83e602c674d0afe9115c80bd9a324cb9e6e2d92994f6f6bc"
   },
   "images": {
     "app-light.png": "ed3a638cc7276e19c5ad602d207a0f3b3360e8d743b2cd39286e72573c01543f",
-    "phone-light.png": "8b1866f4cb0bc5bcbc698fbf2ed9792dde2eda42593819c7b7e1a5011c78e51e",
+    "phone-light.png": "bf955d884934249bf63b1f7757a5d19f9e26c880d21d33f4269a0967f5c2b262",
     "app-dark.png": "76928e476b20584b2e1f62a1da3cfacc9bc1811817ac0b5a4c0b70656e9f9810",
-    "phone-dark.png": "86b61357bb341a35334d9ce5ba154fb0917a0d5ea7f49351704e274c26f2dc7b"
+    "phone-dark.png": "1d77ec9434dba87d932c1f5127bc9b3831eab70ba4320ba3cbcd3b73cb503ccf"
   }
 }

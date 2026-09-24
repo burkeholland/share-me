@@ -38,7 +38,7 @@ test('page copy describes the application without slogans', () => {
   assert.doesNotMatch(html, /Your iPhone files|Scan\. Send\. Accept\.|That's the setup|take the direct route|It goes both ways|without the extra app/i);
 });
 
-test('download points to the published Windows preview, not an unverified Shortcut', () => {
+test('download points to the published Windows preview', () => {
   assert.equal(release.downloadURL, `https://github.com/burkeholland/share-me/releases/download/${release.tag}/${release.fileName}`);
   assert.equal(release.releaseURL, `https://github.com/burkeholland/share-me/releases/tag/${release.tag}`);
   assert.ok(html.includes(`href="${release.downloadURL}">Download<svg`));
@@ -47,9 +47,7 @@ test('download points to the published Windows preview, not an unverified Shortc
   assert.match(release.sourceCommit, /^[a-f0-9]{40}$/);
   assert.ok(release.bytes > 0 && release.executableBytes > release.bytes);
   assert.match(html, /Unsigned preview/);
-  assert.doesNotMatch(html, /Build for Windows|Windows download not published yet|shortcuts:\/\//);
-  assert.match(html, /It isn&apos;t published yet|It isn't published yet/);
-  assert.match(html, /real-iPhone setup checks/);
+  assert.doesNotMatch(html, /Build for Windows|Windows download not published yet/);
   assert.match(html, /#boundaries/);
 });
 
