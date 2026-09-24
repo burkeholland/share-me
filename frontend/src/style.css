@@ -88,10 +88,8 @@ dialog::backdrop { background: var(--cp-overlay); }
 dialog pre { background: var(--cp-surface); border: 1px solid var(--cp-border); padding: var(--space-4); border-radius: var(--radius); white-space: pre-wrap; overflow-wrap: anywhere; max-height: 45vh; overflow: auto; font: inherit; }
 .dialog-actions { justify-content: flex-end; margin-top: var(--space-6); }
 .dialog-heading { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
-.rename-dialog, .shortcut-dialog { background: var(--cp-surface); box-shadow: var(--cp-shadow); }
-.rename-dialog::backdrop, .shortcut-dialog::backdrop { background: var(--cp-modal-backdrop); }
-.shortcut-dialog .notice { margin-top: var(--space-4); }
-.shortcut-fingerprint { padding: var(--space-3); background: var(--cp-surface-soft); border-radius: var(--radius); }
+.rename-dialog { background: var(--cp-surface); box-shadow: var(--cp-shadow); }
+.rename-dialog::backdrop { background: var(--cp-modal-backdrop); }
 .sidebar-footer button[aria-pressed="true"] { color: var(--cp-accent); background: var(--cp-accent-soft); border-color: transparent; }
 .settings-panel { flex: 1; min-height: 0; overflow-y: auto; scrollbar-gutter: stable; }
 .settings-group { display: grid; gap: var(--space-4); padding-bottom: var(--space-6); margin-bottom: var(--space-6); border-bottom: 1px solid var(--cp-border); }

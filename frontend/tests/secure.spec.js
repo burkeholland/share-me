@@ -88,29 +88,6 @@ test.describe('encrypted browser transfers', () => {
     const device = peer.state().devices[0];
     expect(page.url()).not.toContain('pair=');
 
-    await page.getByRole('button', { name: 'Add to share sheet' }).click();
-    const installer = page.getByRole('dialog', { name: 'Share sheet' });
-    await expect(installer.getByRole('button', { name: /^Connect (installed )?Shortcut$/ })).toBeVisible();
-    await installer.getByRole('button', { name: 'Close share sheet setup' }).click();
-
-    expect(peer.state().shortcutEnabled).toBe(false);
-    expect(peer.state().shortcutRunning).toBe(false);
-    const setup = await page.evaluate(async () => {
-      const response = await window.shareMePeer.fetch('/api/shortcut/setup', {
-        method: 'POST', headers: { 'X-Share-Me': '1' },
-      });
-      if (!response.ok) throw new Error('Private Shortcut setup failed');
-      return response.json();
-    });
-    expect(setup.version).toBe(1);
-    expect(setup.host).toBe(localIP || '127.0.0.1');
-    expect(setup.port).toBeGreaterThan(0);
-    expect(setup.enrollment).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(setup.fingerprint).toMatch(/^SHA256:[A-Za-z0-9+/]{43}$/);
-    await expect.poll(() => peer.state().shortcutEnabled).toBe(true);
-    await expect.poll(() => peer.state().shortcutRunning).toBe(true);
-    expect((await page.request.post(`${origin}/api/shortcut/setup`)).status()).toBe(404);
-
     await page.getByLabel('Text or a link').fill('Encrypted iPhone note');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await expect.poll(() => peer.state().pending?.length).toBe(1);

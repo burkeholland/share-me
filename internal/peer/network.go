@@ -13,9 +13,6 @@ import (
 )
 
 func (e *Engine) filterOffer(ctx context.Context, sdp string) (string, error) {
-	// Resolve browser-obfuscated host candidates before Pion sees them. Pion's
-	// public selected-candidate API retains .local names instead of the resolved
-	// IP, which is insufficient for native approval and HTTP RemoteAddr.
 	var resolver *mdns.Conn
 	defer func() {
 		if resolver != nil {
@@ -23,6 +20,8 @@ func (e *Engine) filterOffer(ctx context.Context, sdp string) (string, error) {
 		}
 	}()
 	resolved := map[string]net.IP{}
+	mdnsNames := map[string]struct{}{}
+	mdnsUnavailable := false
 	ctx, cancel := context.WithTimeout(ctx, 8*time.Second)
 	defer cancel()
 	lines := strings.Split(strings.ReplaceAll(sdp, "\r\n", "\n"), "\n")
@@ -30,7 +29,7 @@ func (e *Engine) filterOffer(ctx context.Context, sdp string) (string, error) {
 		return "", errors.New("too many SDP lines")
 	}
 	result := make([]string, 0, len(lines))
-	candidates, permitted, media := 0, 0, 0
+	candidates, usable, media := 0, 0, 0
 	for _, line := range lines {
 		if len(line) > 2048 {
 			return "", errors.New("SDP line too long")
@@ -58,6 +57,9 @@ func (e *Engine) filterOffer(ctx context.Context, sdp string) (string, error) {
 		if candidate.Type() != ice.CandidateTypeHost || candidate.Component() != 1 || candidate.NetworkType() != ice.NetworkTypeUDP4 {
 			continue
 		}
+		if candidate.Port() <= 0 || candidate.Port() > 65535 {
+			continue
+		}
 		address := candidate.Address()
 		ip := net.ParseIP(address)
 		if strings.HasSuffix(address, ".local") {
@@ -67,31 +69,48 @@ func (e *Engine) filterOffer(ctx context.Context, sdp string) (string, error) {
 			var cached bool
 			ip, cached = resolved[address]
 			if !cached {
-				if len(resolved) >= 8 {
-					return "", errors.New("too many mDNS candidates")
-				}
-				if resolver == nil {
-					conn, err := net.ListenUDP("udp4", &net.UDPAddr{IP: net.IPv4(224, 0, 0, 251), Port: 5353})
-					if err != nil {
-						return "", err
+				if _, seen := mdnsNames[address]; !seen {
+					if len(mdnsNames) >= 8 {
+						return "", errors.New("too many mDNS candidates")
 					}
-					resolver, err = mdns.Server(ipv4.NewPacketConn(conn), nil, &mdns.Config{
-						Interfaces: []net.Interface{*e.iface}, IncludeLoopback: e.cfg.AllowLoopback,
-					})
+					mdnsNames[address] = struct{}{}
+				}
+				if resolver == nil && !mdnsUnavailable {
+					mdnsAddress, err := net.ResolveUDPAddr("udp4", mdns.DefaultAddressIPv4)
+					if err == nil {
+						var conn *net.UDPConn
+						conn, err = net.ListenUDP("udp4", mdnsAddress)
+						if err == nil {
+							resolver, err = mdns.Server(ipv4.NewPacketConn(conn), nil, &mdns.Config{
+								Name: "shareme-ice", Interfaces: []net.Interface{*e.iface},
+								IncludeLoopback: e.cfg.AllowLoopback,
+							})
+							if err != nil {
+								_ = conn.Close()
+							}
+						}
+					}
 					if err != nil {
-						_ = conn.Close()
-						return "", err
+						mdnsUnavailable = true
 					}
 				}
-				_, found, err := resolver.QueryAddr(ctx, address)
-				if err != nil {
-					return "", errors.New("browser LAN address could not be resolved")
+				if resolver != nil {
+					_, found, err := resolver.QueryAddr(ctx, address)
+					if err == nil {
+						ip = net.IP(found.AsSlice())
+						resolved[address] = ip
+						cached = true
+					}
 				}
-				ip = net.IP(found.AsSlice())
-				resolved[address] = ip
+				if !cached {
+					// The controlling browser may still establish a
+					// peer-reflexive path by checking our answer directly.
+					usable++
+					continue
+				}
 			}
 		}
-		if !e.permittedRemote(ip) || candidate.Port() <= 0 || candidate.Port() > 65535 {
+		if !e.permittedRemote(ip) {
 			continue
 		}
 		fields := strings.Fields(line)
@@ -100,9 +119,9 @@ func (e *Engine) filterOffer(ctx context.Context, sdp string) (string, error) {
 		}
 		fields[4] = ip.String()
 		result = append(result, strings.Join(fields, " "))
-		permitted++
+		usable++
 	}
-	if media != 1 || permitted == 0 {
+	if media != 1 || usable == 0 {
 		return "", errors.New("offer has no permitted private LAN candidates")
 	}
 	return strings.Join(result, "\r\n") + "\r\n", nil

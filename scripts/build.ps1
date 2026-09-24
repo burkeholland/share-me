@@ -15,7 +15,6 @@ if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     throw 'Install Node.js 22.12 or newer, then rerun scripts\build.ps1.'
 }
 & (Join-Path $PSScriptRoot 'make-icon.ps1')
-& (Join-Path $PSScriptRoot 'stage-shortcut.ps1')
 $previousToolchain = $env:GOTOOLCHAIN
 try {
     $env:GOTOOLCHAIN = 'go1.25.14'

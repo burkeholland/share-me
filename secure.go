@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -15,9 +14,6 @@ import (
 var defaultServiceURL string
 
 func (a *App) startTransport(ip string) error {
-	if err := a.stopShortcutLocked(); err != nil {
-		return err
-	}
 	a.activeIP = ip
 	if a.prefs.Transport == "local" {
 		return a.service.Start(ip, 49321)
@@ -55,12 +51,6 @@ func (a *App) startTransport(ip string) error {
 			return errors.Join(err, a.service.Stop(), engine.Close())
 		}
 		a.pairURL = link
-	}
-	if a.prefs.ShortcutEnabled {
-		if err := a.startShortcutLocked(); err != nil {
-			a.shortcutErr = fmt.Sprintf("Share Sheet unavailable: %v", err)
-			log.Printf("start Shortcut receiver: %v", err)
-		}
 	}
 	return nil
 }
@@ -122,9 +112,6 @@ func (a *App) RevokePhone(id string) error {
 		return err
 	}
 	var result error
-	if a.shortcut != nil {
-		result = errors.Join(result, a.shortcut.RevokeDevice(id))
-	}
 	for _, item := range a.outbox.List(id) {
 		result = errors.Join(result, a.outbox.Remove(item.ID))
 	}

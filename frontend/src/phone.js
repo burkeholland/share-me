@@ -1,5 +1,4 @@
 import { el, icon, brand, bytes, toast, errorMessage } from './shared.js';
-import { installShortcut } from './install.js';
 
 const root = document.getElementById('app');
 if (location.hash && !window.shareMePeer) history.replaceState(null, '', location.pathname + location.search);
@@ -174,12 +173,6 @@ function renderSend() {
     el('div', { id: 'upload-queue', class: 'upload-queue', 'aria-live': 'polite' }),
     textForm,
     el('footer', { class: 'phone-footer minimal-phone-footer' },
-      el('button', { class: 'quiet', onclick: async event => {
-        const button = event.currentTarget;
-        button.disabled = true;
-        try { await installShortcut(); } catch (error) { toast(errorMessage(error), true); }
-        finally { button.disabled = false; }
-      } }, icon('phone', 18), 'Add to share sheet'),
       el('span', { class: 'meta' }, window.shareMePeer ? 'Direct / encrypted' : 'Approve transfers on your PC.')));
   renderQueue();
   if (window.shareMePeer) refreshOffers();

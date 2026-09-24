@@ -15,9 +15,6 @@ let hideButton;
 let networkButton;
 let settingsPhones;
 let settingsPhoneSignature = '';
-let shortcutToggle;
-let shortcutSaving = false;
-let shortcutFingerprint;
 let settingsReturnView = 'inbox';
 let pairSignature = '';
 let sendSignature = '';
@@ -255,14 +252,6 @@ function renderSettings() {
   }
   if (hideButton) hideButton.disabled = !state.trayAvailable;
   if (networkButton) networkButton.textContent = state.status.running ? 'Pause to change network' : 'Start receiving';
-  if (shortcutToggle) {
-    if (!shortcutSaving) shortcutToggle.checked = Boolean(state.shortcutEnabled);
-    shortcutToggle.disabled = shortcutSaving || !state.status.running && !state.shortcutEnabled;
-  }
-  if (shortcutFingerprint) {
-    shortcutFingerprint.textContent = state.shortcutStatus?.fingerprint || '';
-    shortcutFingerprint.hidden = !shortcutFingerprint.textContent;
-  }
   renderSettingsPhones();
 }
 
@@ -465,14 +454,6 @@ function showSettings() {
   });
   settingsPhoneSignature = '';
   settingsPhones = el('div', { class: 'settings-phones' });
-  shortcutToggle = el('input', { type: 'checkbox', checked: Boolean(state.shortcutEnabled) });
-  shortcutToggle.addEventListener('change', async () => {
-    shortcutSaving = true;
-    await action(shortcutToggle, 'SetShortcutEnabled', [shortcutToggle.checked]);
-    shortcutSaving = false;
-    renderSettings();
-  });
-  shortcutFingerprint = el('code', { class: 'shortcut-fingerprint', hidden: true });
   settingsPanel.replaceChildren(
     el('section', { class: 'settings-group', 'aria-label': 'Window' },
       el('h2', {}, 'Window'),
@@ -480,11 +461,6 @@ function showSettings() {
       el('div', { class: 'settings-tray' },
         el('p', { class: 'meta' }, 'Close keeps receiving. Quit from the tray.'), hideButton)),
     state.secure ? el('section', { class: 'settings-group', 'aria-label': 'Paired phones' }, el('h2', {}, 'Phones'), settingsPhones) : null,
-    state.secure ? el('section', { class: 'settings-group', 'aria-label': 'Share sheet' },
-      el('h2', {}, 'Share sheet'),
-      el('label', { class: 'setting-toggle' }, el('span', {}, 'Share-sheet transfers'), shortcutToggle),
-      el('p', { class: 'meta' }, 'Connect the Shortcut from your phone page. Transfers still need Windows approval.'),
-      shortcutFingerprint) : null,
     el('section', { class: 'settings-group', 'aria-label': 'Network' },
       el('h2', {}, el('label', { for: 'network' }, 'Network')), selectControl(select),
       el('div', { class: 'cluster' }, networkButton)),

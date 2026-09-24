@@ -148,21 +148,13 @@ test('renamed executable content is blocked after approval', async ({ page, rece
   expect(await receivedFiles(receiver)).toHaveLength(0);
 });
 
-test('phone UI is compact and Shortcut installation is not falsely advertised as ready', async ({ page, receiver }, testInfo) => {
+test('phone UI is compact', async ({ page, receiver }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openPhone(page, receiver);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBeTruthy();
   const words = await page.locator('body').innerText();
   expect(words.trim().split(/\s+/).length).toBeLessThan(40);
   await page.screenshot({ path: testInfo.outputPath('phone.png'), fullPage: true });
-  await page.route('**/assets/shortcut-install.json', route => route.fulfill({
-    contentType: 'application/json',
-    body: JSON.stringify({ schemaVersion: 2, transport: 'ssh-v1', name: 'Share Me', state: 'unpublished', url: '' }),
-  }));
-  await page.getByRole('button', { name: 'Add to share sheet' }).click();
-  await expect(page.getByRole('dialog')).toBeVisible();
-  await expect(page.getByRole('dialog')).toContainText('Apple publishing');
-  await expect(page.getByRole('link', { name: 'Add Shortcut' })).toHaveCount(0);
 });
 
 test.describe('explicit approval', () => {
@@ -229,10 +221,10 @@ test.describe('explicit approval', () => {
     expect(await receivedFiles(receiver)).toHaveLength(0);
   });
 
-  test('Shortcut preflight polls, then uploads only after acceptance', async ({ page, receiver }) => {
+  test('preflight polls, then uploads only after acceptance', async ({ page, receiver }) => {
     const propose = await page.request.post(`${receiver.address}/api/request`, {
       headers: { 'X-Share-Me': '1' },
-      data: { kind: 'file', name: 'shortcut.txt', size: -1 },
+      data: { kind: 'file', name: 'approved.txt', size: -1 },
     });
     expect(propose.status()).toBe(202);
     const grant = await propose.json();
@@ -243,12 +235,12 @@ test.describe('explicit approval', () => {
     receiver.decide(grant.id, true);
     await expect.poll(async () => (await (await page.request.get(statusURL, { headers })).json()).status).toBe('accepted');
     const result = await page.request.post(`${receiver.address}/api/upload`, {
-      headers, multipart: { file: { name: 'shortcut.txt', mimeType: 'text/plain', buffer: Buffer.from('from Shortcut') } },
+      headers, multipart: { file: { name: 'approved.txt', mimeType: 'text/plain', buffer: Buffer.from('approved content') } },
     });
     expect(result.status()).toBe(201);
     expect(await result.json()).not.toHaveProperty('path');
     const replay = await page.request.post(`${receiver.address}/api/upload`, {
-      headers, multipart: { file: { name: 'shortcut.txt', mimeType: 'text/plain', buffer: Buffer.from('from Shortcut') } },
+      headers, multipart: { file: { name: 'approved.txt', mimeType: 'text/plain', buffer: Buffer.from('approved content') } },
     });
     expect(replay.ok()).toBeFalsy();
     expect(await receivedFiles(receiver)).toHaveLength(1);

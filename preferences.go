@@ -15,10 +15,9 @@ type DesktopSettings struct {
 }
 
 type preferences struct {
-	IP              string `json:"ip"`
-	Transport       string `json:"transport"`
-	ServiceURL      string `json:"serviceUrl,omitempty"`
-	ShortcutEnabled bool   `json:"shortcutEnabled,omitempty"`
+	IP         string `json:"ip"`
+	Transport  string `json:"transport"`
+	ServiceURL string `json:"serviceUrl,omitempty"`
 	DesktopSettings
 }
 

@@ -52,15 +52,9 @@ func runPeerHeadless(assets fs.FS, args []string) error {
 	}
 	app := &App{
 		engine: engine, outbox: box, dataDir: *data, activeIP: *ip, workCtx: ctx,
-		shortcutTest: true, prefsLoaded: true, prefs: preferences{Transport: "secure"},
+		prefsLoaded: true, prefs: preferences{Transport: "secure"},
 	}
 	defer func() {
-		app.mu.Lock()
-		err := app.stopShortcutLocked()
-		app.mu.Unlock()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-		}
 		if app.service != nil {
 			if err := app.service.Stop(); err != nil {
 				fmt.Fprintln(os.Stderr, err)
@@ -70,7 +64,6 @@ func runPeerHeadless(assets fs.FS, args []string) error {
 	service, err := transfer.New(transfer.Config{
 		DataDir: *data, InboxDir: filepath.Join(*data, "inbox"), Assets: assets,
 		MaxFileBytes: 2 << 30, AllowLoopback: true, ScanFile: safety.Scan, Outbox: box,
-		ShortcutSetup: app.createShortcutSetup,
 	})
 	if err != nil {
 		return err
@@ -151,16 +144,11 @@ func runPeerHeadless(assets fs.FS, args []string) error {
 			}
 		case <-ticker.C:
 			connected, message := engine.Status()
-			app.mu.Lock()
-			shortcutEnabled := app.prefs.ShortcutEnabled
-			shortcutRunning := app.shortcut != nil && app.shortcut.Status().Running
-			app.mu.Unlock()
 			frame, err := json.Marshal(map[string]any{
 				"type": "peer-state", "connected": connected, "message": message,
 				"pending": service.Pending(), "pairs": engine.PairRequests(),
 				"devices": engine.Devices(), "outbox": box.List(""),
-				"pairURL":         app.pairURL,
-				"shortcutEnabled": shortcutEnabled, "shortcutRunning": shortcutRunning,
+				"pairURL": app.pairURL,
 			})
 			if err != nil {
 				return err

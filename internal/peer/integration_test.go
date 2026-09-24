@@ -106,6 +106,18 @@ type testGuest struct {
 }
 
 func connectGuest(t *testing.T, e *Engine, broker *testBroker, host *signalSocket, kid string, key []byte) *testGuest {
+	return connectGuestWithOffer(t, e, broker, host, kid, key, func(sdp string) string { return sdp })
+}
+
+func connectGuestWithOffer(
+	t *testing.T,
+	e *Engine,
+	broker *testBroker,
+	host *signalSocket,
+	kid string,
+	key []byte,
+	transform func(string) string,
+) *testGuest {
 	t.Helper()
 	pc, err := e.newPeerConnection()
 	if err != nil {
@@ -138,7 +150,7 @@ func connectGuest(t *testing.T, e *Engine, broker *testBroker, host *signalSocke
 		t.Fatal("guest ICE gather timeout")
 	}
 	sid, _ := randomID()
-	plain, _ := json.Marshal(offer{SDP: pc.LocalDescription().SDP, Name: "Native phone"})
+	plain, _ := json.Marshal(offer{SDP: transform(pc.LocalDescription().SDP), Name: "Native phone"})
 	env, err := sealSignal(key, e.Room(), envelope{Type: "signal", SID: sid, KID: kid, Kind: "offer"}, plain)
 	if err != nil {
 		t.Fatal(err)
@@ -168,6 +180,21 @@ func connectGuest(t *testing.T, e *Engine, broker *testBroker, host *signalSocke
 		t.Fatal(err)
 	}
 	return g
+}
+
+func obfuscateHostCandidates(sdp string) string {
+	lines := strings.Split(strings.ReplaceAll(sdp, "\r\n", "\n"), "\n")
+	for i, line := range lines {
+		if !strings.HasPrefix(line, "a=candidate:") {
+			continue
+		}
+		fields := strings.Fields(line)
+		if len(fields) >= 8 && strings.EqualFold(fields[2], "UDP") && fields[7] == "host" {
+			fields[4] = "01234567-89ab-4cde-8fab-0123456789ab.local"
+			lines[i] = strings.Join(fields, " ")
+		}
+	}
+	return strings.Join(lines, "\r\n")
 }
 
 func (g *testGuest) message(t *testing.T, kind string) controlMessage {
@@ -347,5 +374,43 @@ func TestPionLoopbackPairHTTPReconnectAndRevoke(t *testing.T) {
 	waitFor(t, func() bool { blocked.mu.Lock(); defer blocked.mu.Unlock(); return blocked.wireDone })
 	if len(e.Devices()) != 0 {
 		t.Fatal("revoked credential retained")
+	}
+}
+
+func TestPionConnectsWhenBrowserHostCandidateUsesMDNS(t *testing.T) {
+	broker := newTestBroker(t)
+	e, err := newEngine(Config{
+		DataDir: testDir(t), ServiceURL: broker.server.URL, LocalIP: "127.0.0.1", AllowLoopback: true,
+		OnError: func(err error) { t.Logf("peer: %v", err) },
+	}, newTestProtector(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = e.Close() })
+	if err = e.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var host *signalSocket
+	select {
+	case host = <-broker.hosts:
+	case err := <-broker.errors:
+		t.Fatal(err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("native signaling connection timed out")
+	}
+	if _, err = e.BeginPairing(); err != nil {
+		t.Fatal(err)
+	}
+	e.mu.Lock()
+	invite := append([]byte(nil), e.invite...)
+	e.mu.Unlock()
+	connectGuestWithOffer(t, e, broker, host, "pair", invite, obfuscateHostCandidates)
+	waitFor(t, func() bool { return len(e.PairRequests()) == 1 })
+	request := e.PairRequests()[0]
+	if request.Source != "127.0.0.1" {
+		t.Fatalf("peer-reflexive address was not attributed: %+v", request)
+	}
+	if err = e.DecidePair(request.ID, false); err != nil {
+		t.Fatal(err)
 	}
 }

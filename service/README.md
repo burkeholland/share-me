@@ -17,14 +17,8 @@ npm run dev
 ```
 
 The frontend owner stages the phone application into `public\` (`index.html`,
-its scripts/styles, service worker, and generic Shortcut installation manifest).
-If a signed Shortcut is registered, its unchanged public template is staged too.
-These static installation assets contain no PC-specific configuration or
-credentials. `/assets/ShareMe.shortcut` preserves `Share Me.shortcut` as the
-download filename through Content-Disposition; encoded-path rejection remains
-unchanged. Shortcut enrollment uses the paired WebRTC connection; subsequent
-SSH file transfers do not contact the Worker. `/api/shortcut/setup`, like every
-public `/api/*` route, must remain 404. Tests use separate assets under
+its scripts/styles, and service worker). These static assets contain no
+PC-specific configuration or credentials. Tests use separate assets under
 `test\fixtures\public` and do not modify the production assets. Development uses
 `http://127.0.0.1:8787`; the browser Origin must match that exact address and port.
 HTTP is otherwise rejected for signaling. No login is required for local tests.

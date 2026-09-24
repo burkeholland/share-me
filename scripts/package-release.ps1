@@ -89,7 +89,6 @@ still loads the phone page and establishes connections through Cloudflare.
 It is not the planned offline, local-HTTPS version. Internet access is required
 to connect. Physical-iPhone compatibility still needs final verification.
 
-The Apple share-sheet Shortcut is not published. Use the phone page instead.
 Files are checked and scanned with Windows Defender before being saved.
 No scanner guarantees detection of every threat. Only accept files you expect.
 
@@ -107,7 +106,6 @@ Instructions: https://github.com/burkeholland/share-me#use
         executableBytes = (Get-Item -LiteralPath $Executable).Length
         executableSHA256 = $exeHash
         signed = $false
-        shortcutPublished = $false
     }
     $metadata | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'BUILD-INFO.json') -Encoding utf8NoBOM
     Compress-Archive -LiteralPath (Join-Path $stage 'ShareMe.exe'), (Join-Path $stage 'README.txt'),

@@ -105,11 +105,6 @@ export default {
     const assetURL = new URL(request.url);
     if (assetURL.pathname === "/") assetURL.pathname = "/index.html";
     const response = await env.ASSETS.fetch(new Request(assetURL, request));
-    const result = secure(response, url.origin);
-    if (response.ok && path === "/assets/ShareMe.shortcut") {
-      result.headers.set("Content-Type", "application/octet-stream");
-      result.headers.set("Content-Disposition", 'attachment; filename="Share Me.shortcut"');
-    }
-    return result;
+    return secure(response, url.origin);
   },
 } satisfies ExportedHandler<Env>;

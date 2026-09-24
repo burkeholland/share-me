@@ -28,7 +28,7 @@ func (s *fakeStartupStore) Write(value startupRegistration) error {
 func TestPreferencesDefaultsAndMigration(t *testing.T) {
 	dir := t.TempDir()
 	pref, err := readPreferences(dir)
-	if err != nil || pref.StartWithWindows || pref.StartMinimized || !pref.MinimizeToTray || pref.ShortcutEnabled {
+	if err != nil || pref.StartWithWindows || pref.StartMinimized || !pref.MinimizeToTray {
 		t.Fatalf("unexpected defaults: %+v, %v", pref, err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"ip":"192.168.1.42"}`), 0600); err != nil {
@@ -43,13 +43,13 @@ func TestPreferencesDefaultsAndMigration(t *testing.T) {
 func TestDesktopSettingsPreserveNetworkAndPersist(t *testing.T) {
 	dir := t.TempDir()
 	store := &fakeStartupStore{}
-	current := preferences{IP: "192.168.1.42", ShortcutEnabled: true}
+	current := preferences{IP: "192.168.1.42"}
 	settings := DesktopSettings{StartWithWindows: true, StartMinimized: true, MinimizeToTray: true}
 	updated, err := commitDesktopSettings(dir, current, settings, store, `C:\Share Me\ShareMe.exe`)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.IP != current.IP || !updated.ShortcutEnabled || updated.DesktopSettings != settings ||
+	if updated.IP != current.IP || updated.DesktopSettings != settings ||
 		store.value.Command != `"C:\Share Me\ShareMe.exe" --startup` {
 		t.Fatalf("settings or startup command incorrect: %+v, %+v", updated, store.value)
 	}

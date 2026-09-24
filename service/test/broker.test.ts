@@ -129,19 +129,6 @@ afterEach(async () => {
 });
 
 describe("public Worker boundary", () => {
-  it("preserves the universal Shortcut download name without changing its bytes", async () => {
-    const original = await env.ASSETS.fetch(new Request(origin + "/assets/ShareMe.shortcut"));
-    expect(original.status).toBe(200);
-    const bytes = new Uint8Array(await original.arrayBuffer());
-    for (const method of ["GET", "HEAD"]) {
-      const response = await exports.default.fetch(origin + "/assets/ShareMe.shortcut", { method });
-      expect(response.status).toBe(200);
-      expect(response.headers.get("Content-Type")).toBe("application/octet-stream");
-      expect(response.headers.get("Content-Disposition")).toBe('attachment; filename="Share Me.shortcut"');
-      expect(new Uint8Array(await response.arrayBuffer())).toEqual(method === "HEAD" ? new Uint8Array() : bytes);
-    }
-  });
-
   it("serves first-party assets and health with strict privacy headers", async () => {
     for (const path of ["/", "/index.html", "/app.js", "/healthz"]) {
       const response = await exports.default.fetch(origin + path);
@@ -160,8 +147,7 @@ describe("public Worker boundary", () => {
   });
 
   it.each([
-    "/api", "/api/session", "/api/upload", "/api/outbox", "/api/outbox/file", "/api/shortcut/setup",
-    "/assets/Share%20Me.shortcut",
+    "/api", "/api/session", "/api/upload", "/api/outbox", "/api/outbox/file",
     "/receive", "/receive/secret", "/receive/random",
     "/API/session", "//api/session", "/%61pi/session", "/receive%2fsecret",
     "/signal/nope", "/does-not-exist", "/signal/" + "a".repeat(32) + "?key=secret",

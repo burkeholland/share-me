@@ -11,7 +11,6 @@ const test = base.extend({
       devices: [{ id: 'phone-1', name: 'iPhone', connected: false }, { id: 'phone-2', name: 'iPad', connected: true }],
       settings: { startWithWindows: false, startMinimized: false, minimizeToTray: true },
       trayAvailable: true,
-      shortcutEnabled: false, shortcutStatus: {},
     };
     const calls = [];
     const rename = { error: '', wait: null };
@@ -37,15 +36,11 @@ const test = base.extend({
         state.pairRequests = [];
       }
       if (method === 'SetDesktopSettings') state.settings = args[0];
-      if (method === 'SetShortcutEnabled') {
-        state.shortcutEnabled = args[0];
-        state.shortcutStatus = args[0] ? { running: true, fingerprint: 'SHA256:' + 'A'.repeat(43) } : {};
-      }
     });
     await page.addInitScript(() => {
       const App = { GetState: () => window.desktopState() };
       for (const method of ['Pause', 'Start', 'RenamePhone', 'RevokePhone', 'Decide', 'DecidePair',
-        'SetDesktopSettings', 'SetShortcutEnabled', 'MinimizeToTray', 'SendFiles', 'SendClipboardText', 'CopyLink', 'OpenInbox']) {
+        'SetDesktopSettings', 'MinimizeToTray', 'SendFiles', 'SendClipboardText', 'CopyLink', 'OpenInbox']) {
         App[method] = (...args) => window.desktopAction(method, args);
       }
       window.go = { main: { App } };
@@ -367,16 +362,4 @@ test('notifications have uniform borders without a left-side accent', async ({ p
   await page.getByRole('textbox', { name: 'Phone name' }).fill('New name');
   await page.getByRole('button', { name: 'Save', exact: true }).click();
   await expectUniformBorder(page.getByRole('dialog', { name: 'Rename phone' }).getByRole('alert'));
-});
-
-test('Share Sheet receiving is opt-in and can be disabled from Windows', async ({ page, desktop }) => {
-  await page.getByRole('button', { name: 'Settings', exact: true }).click();
-  const toggle = page.getByRole('checkbox', { name: 'Share-sheet transfers' });
-  await expect(toggle).not.toBeChecked();
-  await toggle.check();
-  await expect.poll(() => desktop.state.shortcutEnabled).toBe(true);
-  await expect(page.getByRole('region', { name: 'Share sheet', exact: true })).toContainText('SHA256:');
-  await toggle.uncheck();
-  await expect.poll(() => desktop.state.shortcutEnabled).toBe(false);
-  await expect(page.getByRole('region', { name: 'Share sheet', exact: true }).locator('code')).toBeHidden();
 });

@@ -22,7 +22,7 @@ const state = {
   pending: [], pairRequests: [], outbox: [],
   devices: [{ id: 'example-phone', name: 'iPhone', connected: true }],
   settings: { startWithWindows: false, startMinimized: false, minimizeToTray: true },
-  trayAvailable: true, shortcutEnabled: false, shortcutStatus: {},
+  trayAvailable: true,
 };
 const browser = await chromium.launch();
 const images = {};
@@ -76,7 +76,7 @@ try {
   }
 } finally { await browser.close(); }
 const manifest = JSON.parse(await readFile(resolve(root, 'frontend', 'dist', '.vite', 'manifest.json'), 'utf8'));
-const sourcePaths = ['frontend/index.html', 'frontend/phone.html', 'frontend/src/desktop.js', 'frontend/src/phone.js', 'frontend/src/shared.js', 'frontend/src/install.js', 'frontend/src/theme.css', 'frontend/src/style.css', 'frontend/public/theme-init.js', 'frontend/vite.config.js', 'site/tests/capture.mjs', 'site/assets/example-qr.png'];
+const sourcePaths = ['frontend/index.html', 'frontend/phone.html', 'frontend/src/desktop.js', 'frontend/src/phone.js', 'frontend/src/shared.js', 'frontend/src/theme.css', 'frontend/src/style.css', 'frontend/public/theme-init.js', 'frontend/vite.config.js', 'site/tests/capture.mjs', 'site/assets/example-qr.png'];
 const sources = {};
 for (const path of sourcePaths) {
   const bytes = await readFile(resolve(root, path));

@@ -7,10 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'frontend', 'dist');
 const output = join(root, 'service', 'public');
 const manifest = JSON.parse(await readFile(join(dist, '.vite', 'manifest.json'), 'utf8'));
-const files = new Set(['save-worker.js', 'theme-init.js', 'assets/shortcut-install.json']);
-const installer = JSON.parse(await readFile(join(dist, 'assets', 'shortcut-install.json'), 'utf8'));
-if (installer.schemaVersion !== 2 || installer.transport !== 'ssh-v1') throw new Error('Build the current Shortcut installer manifest first');
-if (installer.state === 'published' && installer.url === '/assets/ShareMe.shortcut') files.add('assets/ShareMe.shortcut');
+const files = new Set(['save-worker.js', 'theme-init.js']);
 const visited = new Set();
 function visit(key) {
   if (visited.has(key)) return;

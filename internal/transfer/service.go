@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"shareme/internal/outbox"
-	"shareme/internal/shortcut"
 )
 
 const (
@@ -48,9 +47,8 @@ type Config struct {
 	// ScanFile must honor context cancellation. It receives a closed, synced
 	// quarantine file on the inbox volume; its ADS survive publication by rename.
 	// A nil scanner permits text but fails closed for all file transfers.
-	ScanFile      func(context.Context, string) error  `json:"-"`
-	Outbox        *outbox.Store                        `json:"-"`
-	ShortcutSetup func(string) (shortcut.Setup, error) `json:"-"`
+	ScanFile func(context.Context, string) error `json:"-"`
+	Outbox   *outbox.Store                       `json:"-"`
 }
 
 type Status struct {

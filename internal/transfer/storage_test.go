@@ -37,13 +37,13 @@ func TestExistingInboxAndLegacyStateArePreserved(t *testing.T) {
 		})
 	}
 	const browser = "old-browser-secret"
-	const shortcut = "old-shortcut-secret"
+	const token = "old-api-secret"
 	var records []map[string]any
-	for i, secret := range []string{browser, shortcut} {
+	for i, secret := range []string{browser, token} {
 		hash := sha256.Sum256([]byte(secret))
 		kind := "browser"
 		if i == 1 {
-			kind = "shortcut"
+			kind = "api"
 		}
 		records = append(records, map[string]any{
 			"id": fmt.Sprintf("%032x", i+10), "hash": hex.EncodeToString(hash[:]),
@@ -80,7 +80,7 @@ func TestExistingInboxAndLegacyStateArePreserved(t *testing.T) {
 		result := f.begin(t, "POST", "/api/text", "application/json", []byte(`{"text":"not trusted"}`),
 			func(r *http.Request) {
 				if authorization {
-					r.Header.Set("Authorization", "Bearer "+shortcut)
+					r.Header.Set("Authorization", "Bearer "+token)
 				} else {
 					r.AddCookie(&http.Cookie{Name: "shareme_session", Value: browser})
 				}

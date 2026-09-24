@@ -302,7 +302,7 @@ func TestPublicReceiverAndRemovedCredentialRoutes(t *testing.T) {
 	if string(fields["maxFileBytes"]) != fmt.Sprint(defaultMaxFileBytes) || session.header.Get("Set-Cookie") != "" {
 		t.Fatal("public receiver info issued credentials or has the wrong size")
 	}
-	for _, route := range []string{"/api/pair", "/api/shortcut", "/api/logout", "/api/pending", "/api/approve",
+	for _, route := range []string{"/api/pair", "/api/logout", "/api/pending", "/api/approve",
 		"/api/decide", "/api/list", "/api/inbox", "/api/items", "/api/download", "/api/clipboard", "/api/status"} {
 		for _, method := range []string{"GET", "POST"} {
 			result := f.call(t, method, route, "application/json", []byte(`{}`))
@@ -370,7 +370,7 @@ func TestHostOriginAndMandatoryHeader(t *testing.T) {
 		})
 	}
 	assertUnpublished(t, f)
-	receiptItem(t, f, f.approved(t, "/api/text", "application/x-www-form-urlencoded", []byte("text=Shortcut"),
+	receiptItem(t, f, f.approved(t, "/api/text", "application/x-www-form-urlencoded", []byte("text=Approved"),
 		func(r *http.Request) { r.Header.Del("Origin") }))
 }
 

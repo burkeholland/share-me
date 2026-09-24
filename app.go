@@ -19,7 +19,6 @@ import (
 	"shareme/internal/outbox"
 	"shareme/internal/peer"
 	"shareme/internal/safety"
-	"shareme/internal/shortcut"
 	"shareme/internal/transfer"
 )
 
@@ -53,9 +52,6 @@ type App struct {
 	workCtx       context.Context
 	cancelWork    context.CancelFunc
 	activeIP      string
-	shortcut      *shortcut.Server
-	shortcutErr   string
-	shortcutTest  bool
 }
 
 type ViewState struct {
@@ -75,8 +71,6 @@ type ViewState struct {
 	PairRequests     []peer.PairRequest         `json:"pairRequests"`
 	Outbox           []outbox.Item              `json:"outbox"`
 	NetworkIP        string                     `json:"networkIP"`
-	ShortcutEnabled  bool                       `json:"shortcutEnabled"`
-	ShortcutStatus   shortcut.Status            `json:"shortcutStatus"`
 }
 
 func (a *App) onSecondInstanceLaunch(options.SecondInstanceData) {
@@ -109,11 +103,10 @@ func (a *App) initialize() error {
 	a.service, err = transfer.New(transfer.Config{
 		DataDir: a.dataDir, InboxDir: filepath.Join(home, "Downloads", "Share Me"),
 		Assets: a.assets, MaxFileBytes: 2 << 30,
-		ScanFile:      safety.Scan,
-		OnChange:      func() { go a.notifyTransfers() },
-		OnError:       func(err error) { go a.notifyError(err) },
-		Outbox:        a.outbox,
-		ShortcutSetup: a.createShortcutSetup,
+		ScanFile: safety.Scan,
+		OnChange: func() { go a.notifyTransfers() },
+		OnError:  func(err error) { go a.notifyError(err) },
+		Outbox:   a.outbox,
 	})
 	if err != nil {
 		return err
@@ -139,18 +132,13 @@ func (a *App) initialize() error {
 func (a *App) shutdown(context.Context) {
 	a.mu.Lock()
 	a.closed = true
-	service, tray, cancel, engine, cancelWork, shortcutServer := a.service, a.tray, a.cancelMonitor, a.engine, a.cancelWork, a.shortcut
+	service, tray, cancel, engine, cancelWork := a.service, a.tray, a.cancelMonitor, a.engine, a.cancelWork
 	a.mu.Unlock()
 	if cancel != nil {
 		cancel()
 	}
 	if cancelWork != nil {
 		cancelWork()
-	}
-	if shortcutServer != nil {
-		if err := shortcutServer.Close(); err != nil {
-			log.Printf("stop Shortcut receiver: %v", err)
-		}
 	}
 	if tray != nil {
 		if err := tray.Stop(); err != nil {
@@ -176,10 +164,6 @@ func (a *App) GetState() (ViewState, error) {
 	state.Settings = a.prefs.DesktopSettings
 	state.Secure = a.prefs.Transport != "local"
 	state.NetworkIP = a.activeIP
-	state.ShortcutEnabled = a.prefs.ShortcutEnabled
-	if a.shortcut != nil {
-		state.ShortcutStatus = a.shortcut.Status()
-	}
 	state.Devices = []peer.Device{}
 	state.PairRequests = []peer.PairRequest{}
 	state.Outbox = []outbox.Item{}
@@ -193,7 +177,7 @@ func (a *App) GetState() (ViewState, error) {
 	}
 	state.TrayAvailable = a.tray != nil && a.tray.Ready()
 	var notices []string
-	for _, notice := range []string{a.loadErr, a.settingsErr, a.trayErr, a.shortcutErr} {
+	for _, notice := range []string{a.loadErr, a.settingsErr, a.trayErr} {
 		if notice != "" {
 			notices = append(notices, notice)
 		}
@@ -259,8 +243,7 @@ func (a *App) Start(ip string) error {
 	next := a.prefs
 	next.IP = ip
 	if err := savePreferences(a.dataDir, next); err != nil {
-		stopErr := a.stopShortcutLocked()
-		stopErr = errors.Join(stopErr, a.service.Stop())
+		stopErr := a.service.Stop()
 		if a.engine != nil {
 			stopErr = errors.Join(stopErr, a.engine.Close())
 		}
@@ -277,8 +260,7 @@ func (a *App) Pause() error {
 	if a.service == nil {
 		return errors.New("receiver is not initialized")
 	}
-	err := a.stopShortcutLocked()
-	err = errors.Join(err, a.service.Stop())
+	err := a.service.Stop()
 	if a.engine != nil {
 		err = errors.Join(err, a.engine.Close())
 	}

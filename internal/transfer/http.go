@@ -170,10 +170,6 @@ func (s *Service) handler(run *serverRun) http.Handler {
 			if requireMethod(w, r, http.MethodGet) {
 				writeJSON(w, http.StatusOK, map[string]int64{"maxFileBytes": s.config.MaxFileBytes})
 			}
-		case "/api/shortcut/setup":
-			if requireMethod(w, r, http.MethodPost) {
-				s.setupShortcut(w, r, run)
-			}
 		case "/api/outbox":
 			if requireMethod(w, r, http.MethodGet) {
 				s.serveOutbox(w, r, "")
@@ -256,14 +252,7 @@ func requireTransferHeader(r *http.Request) error {
 	if len(values) == 1 && values[0] == "1" {
 		return nil
 	}
-	// Legacy Shortcuts send Authorization instead. Its presence is only a
-	// non-simple CSRF marker, never authentication or permission to save.
-	for _, value := range r.Header.Values("Authorization") {
-		if strings.TrimSpace(value) != "" {
-			return nil
-		}
-	}
-	return problem(http.StatusForbidden, "transfer requests require X-Share-Me: 1 or a nonempty Authorization header")
+	return problem(http.StatusForbidden, "transfer requests require X-Share-Me: 1")
 }
 
 func (s *Service) serveAsset(w http.ResponseWriter, r *http.Request, name string) {
@@ -297,10 +286,6 @@ func (s *Service) serveAsset(w http.ResponseWriter, r *http.Request, name string
 		contentType = http.DetectContentType(header[:n])
 	}
 	w.Header().Set("Content-Type", contentType)
-	if name == "assets/ShareMe.shortcut" {
-		w.Header().Set("Content-Type", "application/octet-stream")
-		w.Header().Set("Content-Disposition", `attachment; filename="Share Me.shortcut"`)
-	}
 	w.Header().Set("Content-Length", fmt.Sprint(info.Size()))
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(header[:n])
