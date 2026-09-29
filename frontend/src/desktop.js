@@ -415,6 +415,7 @@ function showSettings() {
   const preferenceRows = [
     ['startWithWindows', 'Start with Windows'],
     ['startMinimized', 'Start minimized to tray'],
+    ['closeToTray', 'Close button hides to tray'],
     ['minimizeToTray', 'Minimize button hides to tray'],
   ].map(([key, label]) => {
     const input = el('input', { type: 'checkbox', checked: Boolean(state.settings?.[key]) });
@@ -459,7 +460,7 @@ function showSettings() {
       el('h2', {}, 'Window'),
       el('div', { class: 'settings-preferences' }, ...preferenceRows),
       el('div', { class: 'settings-tray' },
-        el('p', { class: 'meta' }, 'Close keeps receiving. Quit from the tray.'), hideButton)),
+        el('p', { class: 'meta' }, 'When hidden, Share Me keeps receiving. Use Quit from the tray to exit.'), hideButton)),
     state.secure ? el('section', { class: 'settings-group', 'aria-label': 'Paired phones' }, el('h2', {}, 'Phones'), settingsPhones) : null,
     el('section', { class: 'settings-group', 'aria-label': 'Network' },
       el('h2', {}, el('label', { for: 'network' }, 'Network')), selectControl(select),

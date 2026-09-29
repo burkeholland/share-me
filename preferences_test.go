@@ -28,14 +28,14 @@ func (s *fakeStartupStore) Write(value startupRegistration) error {
 func TestPreferencesDefaultsAndMigration(t *testing.T) {
 	dir := t.TempDir()
 	pref, err := readPreferences(dir)
-	if err != nil || pref.StartWithWindows || pref.StartMinimized || !pref.MinimizeToTray {
+	if err != nil || pref.StartWithWindows || pref.StartMinimized || !pref.CloseToTray || !pref.MinimizeToTray {
 		t.Fatalf("unexpected defaults: %+v, %v", pref, err)
 	}
 	if err := os.WriteFile(filepath.Join(dir, "settings.json"), []byte(`{"ip":"192.168.1.42"}`), 0600); err != nil {
 		t.Fatal(err)
 	}
 	pref, err = readPreferences(dir)
-	if err != nil || pref.IP != "192.168.1.42" || !pref.MinimizeToTray || pref.StartWithWindows {
+	if err != nil || pref.IP != "192.168.1.42" || !pref.CloseToTray || !pref.MinimizeToTray || pref.StartWithWindows {
 		t.Fatalf("existing network must survive migration: %+v, %v", pref, err)
 	}
 }
@@ -44,7 +44,7 @@ func TestDesktopSettingsPreserveNetworkAndPersist(t *testing.T) {
 	dir := t.TempDir()
 	store := &fakeStartupStore{}
 	current := preferences{IP: "192.168.1.42"}
-	settings := DesktopSettings{StartWithWindows: true, StartMinimized: true, MinimizeToTray: true}
+	settings := DesktopSettings{StartWithWindows: true, StartMinimized: true, CloseToTray: true, MinimizeToTray: true}
 	updated, err := commitDesktopSettings(dir, current, settings, store, `C:\Share Me\ShareMe.exe`)
 	if err != nil {
 		t.Fatal(err)
@@ -71,8 +71,8 @@ func TestDesktopSettingsPreserveNetworkAndPersist(t *testing.T) {
 		t.Fatalf("disabling must remove startup and preserve explicit false settings: %v", err)
 	}
 	reopened, err := readPreferences(dir)
-	if err != nil || reopened.MinimizeToTray {
-		t.Fatal("explicitly disabling minimize to tray must survive restart")
+	if err != nil || reopened.CloseToTray || reopened.MinimizeToTray {
+		t.Fatal("explicitly disabling tray behavior must survive restart")
 	}
 }
 

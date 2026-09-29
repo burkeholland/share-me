@@ -27,7 +27,7 @@ func windowTestApp() (*App, *fakeWindow, *fakeTray) {
 	window, tray := &fakeWindow{}, &fakeTray{ready: true}
 	return &App{
 		ctx: context.Background(), domLoaded: true, window: window, tray: tray,
-		prefs: preferences{DesktopSettings: DesktopSettings{MinimizeToTray: true}},
+		prefs: preferences{DesktopSettings: DesktopSettings{CloseToTray: true, MinimizeToTray: true}},
 	}, window, tray
 }
 
@@ -61,6 +61,14 @@ func TestUnavailableTrayNeverHidesWindow(t *testing.T) {
 	app.reportTrayError(errors.New("Explorer recovery failed"))
 	if app.hidden || window.shown != 1 || app.trayErr == "" {
 		t.Fatal("tray failure must expose an actionable visible window")
+	}
+}
+
+func TestClosePreferenceCanExitNormally(t *testing.T) {
+	app, window, tray := windowTestApp()
+	app.prefs.CloseToTray = false
+	if app.beforeClose(app.ctx) || app.hidden || window.hidden != 0 || tray.stopped {
+		t.Fatal("disabled close-to-tray preference must allow the native close")
 	}
 }
 

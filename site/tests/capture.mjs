@@ -21,7 +21,7 @@ const state = {
   ],
   pending: [], pairRequests: [], outbox: [],
   devices: [{ id: 'example-phone', name: 'iPhone', connected: true }],
-  settings: { startWithWindows: false, startMinimized: false, minimizeToTray: true },
+  settings: { startWithWindows: false, startMinimized: false, closeToTray: true, minimizeToTray: true },
   trayAvailable: true,
 };
 const browser = await chromium.launch();

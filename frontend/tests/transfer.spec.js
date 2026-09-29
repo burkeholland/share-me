@@ -253,7 +253,7 @@ test.describe('explicit approval', () => {
       status: { running: true, address: receiver.address, inboxDir: receiver.inboxDir },
       networks: [{ name: 'Local test', ip: '127.0.0.1' }], items: [],
       pending: receiver.pending(), error: '',
-      settings: { startWithWindows: false, startMinimized: false, minimizeToTray: true },
+      settings: { startWithWindows: false, startMinimized: false, closeToTray: true, minimizeToTray: true },
       trayAvailable: true,
       qr: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWZkAAAAASUVORK5CYII=',
     }));
@@ -289,7 +289,7 @@ test.describe('explicit approval', () => {
   test('desktop startup and tray options save, persist, and recover from errors', async ({ page, receiver }, testInfo) => {
     test.skip(testInfo.project.name !== 'chromium', 'Windows uses a Chromium-based WebView');
     await page.setViewportSize({ width: 960, height: 680 });
-    const desktopSettings = { startWithWindows: false, startMinimized: false, minimizeToTray: true };
+    const desktopSettings = { startWithWindows: false, startMinimized: false, closeToTray: true, minimizeToTray: true };
     let saves = 0;
     let failSave = false;
     let hidden = 0;
@@ -317,6 +317,7 @@ test.describe('explicit approval', () => {
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(page.getByLabel('Start with Windows', { exact: true })).not.toBeChecked();
     await expect(page.getByLabel('Start minimized to tray', { exact: true })).not.toBeChecked();
+    await expect(page.getByLabel('Close button hides to tray', { exact: true })).toBeChecked();
     await expect(page.getByLabel('Minimize button hides to tray', { exact: true })).toBeChecked();
     await page.getByRole('button', { name: 'Close settings', exact: true }).click();
     await expect(page.getByRole('region', { name: 'Settings', exact: true })).toBeHidden();
@@ -326,13 +327,16 @@ test.describe('explicit approval', () => {
     await expect.poll(() => desktopSettings.startWithWindows).toBe(true);
     await page.getByLabel('Start minimized to tray', { exact: true }).check();
     await expect.poll(() => desktopSettings.startMinimized).toBe(true);
+    await page.getByLabel('Close button hides to tray', { exact: true }).uncheck();
+    await expect.poll(() => desktopSettings.closeToTray).toBe(false);
     await page.getByLabel('Minimize button hides to tray', { exact: true }).uncheck();
     await expect.poll(() => desktopSettings.minimizeToTray).toBe(false);
-    expect(saves).toBe(3);
+    expect(saves).toBe(4);
     await page.reload();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await expect(page.getByLabel('Start with Windows', { exact: true })).toBeChecked();
     await expect(page.getByLabel('Start minimized to tray', { exact: true })).toBeChecked();
+    await expect(page.getByLabel('Close button hides to tray', { exact: true })).not.toBeChecked();
     await expect(page.getByLabel('Minimize button hides to tray', { exact: true })).not.toBeChecked();
     failSave = true;
     await page.getByLabel('Start with Windows', { exact: true }).uncheck();

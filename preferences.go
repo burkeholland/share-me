@@ -11,6 +11,7 @@ import (
 type DesktopSettings struct {
 	StartWithWindows bool `json:"startWithWindows"`
 	StartMinimized   bool `json:"startMinimized"`
+	CloseToTray      bool `json:"closeToTray"`
 	MinimizeToTray   bool `json:"minimizeToTray"`
 }
 
@@ -39,7 +40,13 @@ func (a *App) loadPreferences() error {
 }
 
 func readPreferences(dir string) (preferences, error) {
-	pref := preferences{Transport: "secure", DesktopSettings: DesktopSettings{MinimizeToTray: true}}
+	pref := preferences{
+		Transport: "secure",
+		DesktopSettings: DesktopSettings{
+			CloseToTray:    true,
+			MinimizeToTray: true,
+		},
+	}
 	data, err := os.ReadFile(filepath.Join(dir, "settings.json"))
 	if errors.Is(err, os.ErrNotExist) {
 		return pref, nil

@@ -135,7 +135,7 @@ func (a *App) MinimizeToTray() error {
 
 func (a *App) beforeClose(context.Context) bool {
 	a.mu.Lock()
-	exit := a.quitting || a.closed || a.tray == nil || !a.tray.Ready()
+	exit := a.quitting || a.closed || !a.prefs.CloseToTray || a.tray == nil || !a.tray.Ready()
 	a.mu.Unlock()
 	if exit {
 		return false

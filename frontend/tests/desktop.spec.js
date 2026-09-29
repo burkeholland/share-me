@@ -9,7 +9,7 @@ const test = base.extend({
       networks: [{ name: 'Ethernet', ip: '192.168.1.2' }, { name: 'Wi-Fi', ip: '192.168.1.3' }],
       items: [], pending: [], pairRequests: [], outbox: [],
       devices: [{ id: 'phone-1', name: 'iPhone', connected: false }, { id: 'phone-2', name: 'iPad', connected: true }],
-      settings: { startWithWindows: false, startMinimized: false, minimizeToTray: true },
+      settings: { startWithWindows: false, startMinimized: false, closeToTray: true, minimizeToTray: true },
       trayAvailable: true,
     };
     const calls = [];
