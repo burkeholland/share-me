@@ -87,6 +87,20 @@ test.describe('encrypted browser transfers', () => {
     await expect.poll(() => signalingClosed).toBe(1);
     const device = peer.state().devices[0];
     expect(page.url()).not.toContain('pair=');
+    expect(page.url()).toContain(`device=${device.id}`);
+    expect(page.url()).toContain('secret=');
+    await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', '/manifest.webmanifest');
+    await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', '/icons/share-me-180.png');
+    const manifest = await (await page.request.get(`${origin}/manifest.webmanifest`)).json();
+    expect(manifest).toMatchObject({
+      name: 'Share Me',
+      display: 'standalone',
+      icons: [
+        { src: '/icons/share-me-192.png', sizes: '192x192' },
+        { src: '/icons/share-me-512.png', sizes: '512x512' },
+      ],
+    });
+    expect((await page.request.get(`${origin}/icons/share-me-180.png`)).headers()['content-type']).toBe('image/png');
 
     await page.getByLabel('Text or a link').fill('Encrypted iPhone note');
     await page.getByRole('button', { name: 'Send', exact: true }).click();
@@ -124,7 +138,27 @@ test.describe('encrypted browser transfers', () => {
     const downloaded = await download.path();
     expect((await readFile(downloaded)).equals(bytes)).toBe(true);
 
-    await page.reload();
+    const resumeURL = page.url();
+    await page.evaluate(() => new Promise((resolve, reject) => {
+      const request = indexedDB.deleteDatabase('share-me-paired-pcs');
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
+    }));
+    await page.goto('about:blank');
+    await page.goto(resumeURL);
+    await expect(page.getByRole('heading', { name: 'Send to PC', exact: true })).toBeVisible({ timeout: 20000 });
+    expect(peer.state().pairs).toHaveLength(0);
+    await expect.poll(() => page.evaluate(() => new Promise((resolve, reject) => {
+      const request = indexedDB.open('share-me-paired-pcs', 1);
+      request.onsuccess = () => {
+        const db = request.result;
+        const read = db.transaction('pcs').objectStore('pcs').getAll();
+        read.onsuccess = () => { resolve(read.result.length); db.close(); };
+        read.onerror = () => { reject(read.error); db.close(); };
+      };
+      request.onerror = () => reject(request.error);
+    }))).toBe(1);
+    await page.goto(origin);
     await expect(page.getByRole('heading', { name: 'Send to PC', exact: true })).toBeVisible({ timeout: 20000 });
     expect(peer.state().pairs).toHaveLength(0);
     await expect(page.getByRole('button', { name: 'Accept Transfer', exact: true })).toBeVisible();

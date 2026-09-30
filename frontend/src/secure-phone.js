@@ -6,6 +6,10 @@ const root = document.getElementById('app');
 const params = new URLSearchParams(location.hash.slice(1));
 let room = params.get('room');
 const invitation = params.get('pair');
+const credential = params.has('device') || params.has('secret') ? {
+  id: params.get('device'),
+  secret: params.get('secret'),
+} : null;
 const status = el('p', { class: 'meta space-top', role: 'status' }, 'Connecting...');
 root.append(brand(), status);
 let transport;
@@ -19,7 +23,7 @@ async function connect() {
   controller = new AbortController();
   try {
     transport = await connectPC({
-      room, invitation, signal: controller.signal,
+      room, invitation, credential, signal: controller.signal,
       onStatus(message, connected) {
         status.textContent = message;
         if (!connected && window.shareMePeer) window.dispatchEvent(new CustomEvent('peer:status', { detail: message }));

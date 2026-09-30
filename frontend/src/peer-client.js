@@ -83,16 +83,20 @@ async function savePC(value) {
   } finally { db.close(); }
 }
 
-export async function connectPC({ room, invitation, onStatus, signal }) {
+export async function connectPC({ room, invitation, credential, onStatus, signal }) {
   if (!idPattern.test(room) || !isSecureContext || !crypto.subtle || !window.RTCPeerConnection) {
     throw new Error('Open the secure Share Me link in a supported browser.');
   }
-  const saved = invitation ? null : await storedPC(room);
-  if (!invitation && (!saved || !idPattern.test(saved.id) || !(saved.key instanceof CryptoKey))) {
+  if (invitation && credential) throw new Error('Invalid connection credential');
+  const saved = invitation || credential ? null : await storedPC(room);
+  const identity = credential || saved;
+  if (!invitation && (!identity || !idPattern.test(identity.id) ||
+      typeof identity.secret !== 'string' && !(identity.key instanceof CryptoKey))) {
     throw new Error('Choose Add phone on your PC, then scan its QR code.');
   }
-  const kid = invitation ? 'pair' : saved.id;
-  const key = invitation ? await importSecret(unbase64(invitation, 32)) : saved.key;
+  const kid = invitation ? 'pair' : identity.id;
+  const key = invitation ? await importSecret(unbase64(invitation, 32)) :
+    typeof identity.secret === 'string' ? await importSecret(unbase64(identity.secret, 32)) : identity.key;
   const connection = new RTCPeerConnection({ iceServers: [], iceTransportPolicy: 'all' });
   const control = connection.createDataChannel('shareme.control', { ordered: true });
   const socket = new WebSocket(`${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/signal/${room}`);
@@ -102,6 +106,7 @@ export async function connectPC({ room, invitation, onStatus, signal }) {
   let closed = false;
   let answerReceived = false;
   let pairingSaved = false;
+  let resumeCredential = credential || (typeof saved?.secret === 'string' ? saved : null);
   let messageChain = Promise.resolve();
   let resolveReady;
   let rejectReady;
@@ -126,15 +131,22 @@ export async function connectPC({ room, invitation, onStatus, signal }) {
       const message = JSON.parse(event.data);
       if (message.type === 'paired' && kid === 'pair' && !authenticated && !pairingSaved) {
         if (!idPattern.test(message.id) || typeof message.name !== 'string') throw new Error('Invalid pairing response');
-        const deviceKey = await importSecret(unbase64(message.secret, 32));
-        await savePC({ room, id: message.id, name: message.name, key: deviceKey });
+        await importSecret(unbase64(message.secret, 32));
+        resumeCredential = { room, id: message.id, name: message.name, secret: message.secret };
+        await savePC(resumeCredential);
         pairingSaved = true;
         control.send(JSON.stringify({ type: 'paired-ack' }));
       } else if (message.type === 'ready' && !authenticated && (kid !== 'pair' || pairingSaved)) {
+        if (credential) await savePC({ room, id: credential.id, secret: credential.secret });
         authenticated = true;
         clearTimeout(timeout);
         socket.close();
-        history.replaceState(null, '', `${location.pathname}#room=${room}`);
+        const hash = new URLSearchParams({ room });
+        if (resumeCredential?.secret) {
+          hash.set('device', resumeCredential.id);
+          hash.set('secret', resumeCredential.secret);
+        }
+        history.replaceState(null, '', `${location.pathname}#${hash}`);
         settled = true;
         onStatus?.('Connected', true);
         resolveReady({

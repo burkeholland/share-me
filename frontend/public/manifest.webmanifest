@@ -1,0 +1,25 @@
+{
+  "id": "/",
+  "name": "Share Me",
+  "short_name": "Share Me",
+  "description": "Send files and text directly between your phone and Windows PC.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#b11f4b",
+  "theme_color": "#b11f4b",
+  "icons": [
+    {
+      "src": "/icons/share-me-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/share-me-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

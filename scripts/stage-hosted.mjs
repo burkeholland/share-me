@@ -7,7 +7,14 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = join(root, 'frontend', 'dist');
 const output = join(root, 'service', 'public');
 const manifest = JSON.parse(await readFile(join(dist, '.vite', 'manifest.json'), 'utf8'));
-const files = new Set(['save-worker.js', 'theme-init.js']);
+const files = new Set([
+  'save-worker.js',
+  'theme-init.js',
+  'manifest.webmanifest',
+  'icons/share-me-180.png',
+  'icons/share-me-192.png',
+  'icons/share-me-512.png',
+]);
 const visited = new Set();
 function visit(key) {
   if (visited.has(key)) return;
