@@ -66,10 +66,19 @@ After approval, Windows generates and durably saves a separate device ID and
 32-byte device secret, consumes the invitation, and sends over the DTLS channel:
 `{"type":"paired","id":"<device ID>","name":"<name>","secret":"<base64url secret>"}`.
 The device secret is NOT derived from or sent through the invitation/signaling
-channel. The browser imports it as a non-extractable AES-GCM CryptoKey and stores
-it with the device and room IDs in IndexedDB, then replies `{"type":"paired-ack"}`.
+channel. The browser stores it with the device, room IDs, and name in IndexedDB,
+then replies `{"type":"paired-ack"}`.
 Only then is that peer authorized; Windows sends `{"type":"ready"}`.
 Declined pairing sends `{"type":"error","message":"Connection declined on PC"}`.
+
+After `ready`, the browser rewrites its address to
+`{origin}/#room={room}&device={device ID}&secret={base64url secret}` so a
+bookmark or an iOS Home Screen web app, which has separate storage, can
+reconnect. A page opened with those fragment values uses them directly and saves
+them again. The stored record and the fragment are bearer secrets that code from
+the hosted origin can read; they are never sent to the web server. Records saved
+by earlier builds hold a non-extractable AES-GCM CryptoKey instead and keep
+working.
 
 Returning browsers encrypt signaling using their device secret and device ID.
 Their control channel receives `{"type":"ready"}` after authentication. Pairing

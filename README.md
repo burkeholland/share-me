@@ -27,7 +27,7 @@ Keep both devices on the same trusted network and the PC awake. By default, **Cl
 
 **Settings** opens a full page, grouped into Window, Phones, Network, and Save to. Its top-right **X** or **Escape** returns to the previous transfer view. It includes **Start with Windows** (off by default), **Start minimized to tray** (off by default), **Close button hides to tray** (on by default), and **Minimize button hides to tray** (on by default). The Close and Minimize options are independent. There is also a **Minimize to tray** button in Settings. If the tray cannot be created, the window stays visible and Close exits normally.
 
-Startup applies only to the current Windows user and does not need administrator access. It uses the executable's current location, so keep the executable there; opening it from a new location updates an enabled startup entry. Turning startup off removes only Share Me's entry. Windows Startup apps can independently disable automatic launch.
+Startup applies only to the current Windows user and does not need administrator access. It uses the executable's current location, so keep the executable there; opening it from a new location updates an enabled startup entry. Turning startup off removes only Share Me's entry. Windows Startup apps can independently disable automatic launch. The Microsoft Store version uses a Windows startup task instead of a Run entry: if it was turned off in **Windows Settings > Apps > Startup**, turn it back on there.
 
 If Windows Firewall asks, allow **Private networks only**. Pause receiving before changing adapters in Settings.
 
@@ -57,7 +57,7 @@ Limits: **2 GiB per file**, **64 KiB per text transfer**, **50 queued files** on
 
 The HTTPS bookmark stays the same when the PC's LAN address changes. Guest Wi-Fi isolation, VPNs, and firewalls may prevent a direct connection; there is deliberately no cloud file-relay fallback. Keep the phone page open and the PC awake. If the phone connection drops after suspension, use **Reconnect**. Safari on a physical iPhone still needs a final device-specific check; Windows Playwright WebKit supports the streaming save flow but does not implement WebRTC.
 
-Received history/text and outgoing snapshots are stored unencrypted under `%APPDATA%\ShareMe`; browser pairing secrets and the host key are protected with Windows DPAPI. Browser keys are non-extractable WebCrypto keys in IndexedDB. Existing photos, history, and desktop settings are preserved during upgrades. No automatic inbox deletion is performed. Outbox limits are **20 items / 10 GiB total**.
+Received history/text and outgoing snapshots are stored unencrypted under `%APPDATA%\ShareMe`; each paired browser's secret and the host key are protected on the PC with Windows DPAPI. On the phone, the browser keeps its reconnect secret in IndexedDB and, after pairing, in the fragment of the page address, where code from the Share Me origin can read it. Connections saved by earlier builds keep their non-extractable WebCrypto key. Existing photos, history, and desktop settings are preserved during upgrades. No automatic inbox deletion is performed. Outbox limits are **20 items / 10 GiB total**.
 
 For development compatibility only, an explicit `"transport":"local"` in `%APPDATA%\ShareMe\settings.json` enables the older, unencrypted port **49321** receiver. It has no paired outbox access and must only be used on a trusted LAN. Secure mode is the default and never silently falls back to HTTP.
 
@@ -65,17 +65,32 @@ The app requires the installed **WebView2 Runtime**, normally present on Windows
 
 ## Build
 
-Requirements: Windows, Go 1.25+, Node.js 22.12+, WebView2.
+Requirements: Windows, Go 1.26, Node.js 22.12+, WebView2.
 
 ```powershell
 .\scripts\build.ps1
 ```
 
-The build recognizes portable Go at `.tools\go\bin` and uses **Go 1.25.14** with **Wails 2.12.0**. Wails 2's package loader cannot read Go 1.27 export data. Desktop assets are embedded in `build\bin\ShareMe.exe`; there are no external fonts or UI libraries at runtime. The phone UI is hosted on Cloudflare.
+The build recognizes portable Go at `.tools\go\bin` and uses **Go 1.26.8** with **Wails 2.12.0**. The pin lives in `scripts\common.ps1`. Wails 2's package loader cannot read Go 1.27 export data, and Go 1.25 no longer receives security fixes. Desktop assets are embedded in `build\bin\ShareMe.exe`; there are no external fonts or UI libraries at runtime. The phone UI is hosted on Cloudflare.
 
 The build reads the publisher-owned HTTPS origin from `scripts\service-url.json`; `-ServiceURL https://your-service.workers.dev` overrides it. To publish your own service, build the frontend, run `node scripts\stage-hosted.mjs`, and follow `service\README.md`. The Worker uses the account's existing plan limits; no paid upgrade is required by the configuration.
 
-For a downloadable package, build with `-OutputName ShareMe-0.3.0-windows-x64.exe`, then run `scripts\package-release.ps1 -SourceCommit <40-character-application-source-commit>`. The script validates the production build and packages `ShareMe.exe`, instructions, build metadata, and licenses for Go and every linked module in a ZIP, with a separate SHA-256 checksum. It does not publish, commit, or push anything. Package outputs stay under ignored `build\bin`. Use a source commit matching the built application, and update the landing page's release metadata and measured archive size when publishing a new version.
+For a downloadable package, build with `-OutputName ShareMe-1.0.0-windows-x64.exe`, then run `scripts\package-release.ps1 -SourceCommit <40-character-application-source-commit>`. The script validates the production build and packages `ShareMe.exe`, instructions, build metadata, and licenses for Go and every linked module in a ZIP, with a separate SHA-256 checksum. It does not publish, commit, or push anything. Package outputs stay under ignored `build\bin`. Use a source commit matching the built application, and update the landing page's release metadata and measured archive size when publishing a new version.
+
+### Microsoft Store package (MSIX)
+
+After `scripts\build.ps1`, `scripts\package-msix.ps1` packages `build\bin\ShareMe.exe` as `build\bin\ShareMe-1.0.0-windows-x64-development.msix`, an unsigned package with a local development identity. It needs PowerShell 7.2 and the Windows 11 SDK (`makeappx.exe`, `makepri.exe`). The script unpacks the result, compares every file with what it staged, and writes a JSON receipt with the identity and SHA-256 hashes next to the package. The package carries `PRIVACY.md` and the third-party notices.
+
+To run the app under package identity, turn on Windows Developer Mode and register the unpacked copy the script verified. Remove it before packaging again, because packaging replaces that folder.
+
+```powershell
+Add-AppxPackage -Register .\build\bin\msix\development\verification\AppxManifest.xml
+Get-AppxPackage BurkeHolland.ShareMe.Development | Remove-AppxPackage
+```
+
+A packaged process gets its `HKCU` registry writes redirected, so a Run entry would never start it. With package identity, **Start with Windows** switches the manifest's startup task through the Windows StartupTask API instead. `TestPackagedStartupTaskTurnsOnAndOff` exercises that and only runs with package identity, for example with `Invoke-CommandInDesktopPackage` and a `go test -c` binary. On a PC that has never run the ZIP version, Windows keeps `%APPDATA%\ShareMe` in the package's private folder and deletes it on uninstall; received files in `Downloads\Share Me` stay.
+
+For a Store upload, copy the values from Partner Center's **Product identity** page into a JSON file with `identityName`, `publisher`, `publisherDisplayName`, `displayName` (the reserved product name), and `packageFamilyName`, then run `scripts\package-msix.ps1 -StoreIdentity <file>`. Keep that file out of the repository. The script checks that the identity name and publisher produce the given package family name. Store packages stay unsigned because Microsoft signs them after certification. The MSIX version is the application version from `wails.json` with a fourth `0`.
 
 ## Landing page
 
