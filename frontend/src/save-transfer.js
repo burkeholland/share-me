@@ -32,7 +32,10 @@ async function prepareSaving() {
 export async function acceptOutgoing(transport, item) {
   if (item.kind === 'text') {
     const response = await transport.fetch(`/api/outbox/${item.id}`);
-    if (!response.ok) throw new Error('This transfer is no longer available.');
+    if (!response.ok) {
+      await response.body?.cancel();
+      throw new Error('This transfer is no longer available.');
+    }
     if (Number(response.headers.get('Content-Length')) > 65536) {
       await response.body.cancel();
       throw new Error('Text transfer is too large.');

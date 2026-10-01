@@ -170,7 +170,7 @@ func (e *Engine) Start(ctx context.Context) error {
 	}
 	e.started = true
 	e.ctx, e.cancel = context.WithCancel(ctx)
-	e.message = "Connecting to signaling service"
+	e.message = "Connecting to the connection service..."
 	e.wg.Add(2)
 	go func() {
 		defer e.wg.Done()
@@ -410,7 +410,7 @@ func (e *Engine) RenameDevice(id, name string) error {
 	e.persistMu.Lock()
 	e.mu.Lock()
 	c, ok := e.state.Devices[id]
-	if !ok || e.closed {
+	if !ok {
 		e.mu.Unlock()
 		e.persistMu.Unlock()
 		return errors.New("unknown device")
@@ -435,7 +435,7 @@ func (e *Engine) RenameDevice(id, name string) error {
 func (e *Engine) RevokeDevice(id string) error {
 	e.persistMu.Lock()
 	e.mu.Lock()
-	if _, ok := e.state.Devices[id]; !ok || e.closed {
+	if _, ok := e.state.Devices[id]; !ok {
 		e.mu.Unlock()
 		e.persistMu.Unlock()
 		return errors.New("unknown device")

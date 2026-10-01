@@ -81,7 +81,7 @@ button.item-content:hover:not(:disabled) { background: none; }
 .active-transfer { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3); border-radius: var(--radius); background: var(--cp-accent-soft); }
 .active-transfer .transfer-name { flex: 1; }
 .notice { padding: var(--space-3) var(--space-4); border: 1px solid var(--cp-border); background: var(--cp-surface); border-radius: var(--radius); font-size: 13px; }
-.error-banner { margin-bottom: var(--space-5); }
+.error-banner { margin-bottom: var(--space-5); white-space: pre-line; }
 .toast { position: fixed; bottom: var(--space-6); left: 50%; transform: translateX(-50%); max-width: min(560px, calc(100vw - 32px)); display: flex; align-items: center; gap: var(--space-4); background: var(--cp-surface); color: var(--cp-text); border: 1px solid var(--cp-border); border-radius: var(--radius); box-shadow: var(--cp-shadow); padding: var(--space-3) var(--space-4); z-index: 10; }
 dialog { color: var(--cp-text); background: var(--cp-bg-elevated); border: 1px solid var(--cp-border); border-radius: var(--radius-panel); max-width: min(480px, calc(100vw - 32px)); width: 100%; padding: var(--space-6); max-height: 85vh; overflow-y: auto; }
 dialog::backdrop { background: var(--cp-overlay); }
@@ -129,10 +129,6 @@ dialog pre { background: var(--cp-surface); border: 1px solid var(--cp-border); 
 .upload-item progress { width: 100%; grid-column: 1 / -1; height: 5px; accent-color: var(--cp-accent); }
 .upload-error { grid-column: 1 / -1; color: var(--cp-danger); font-size: 12px; }
 .phone-footer { margin-top: var(--space-8); display: grid; gap: var(--space-1); }
-.phone-footer button { justify-self: start; padding-left: 0; color: var(--cp-accent); }
-.install-actions { display: grid; gap: var(--space-3); margin-top: var(--space-6); }
-.install-actions a { display: block; border-radius: var(--radius); padding: var(--space-3) var(--space-4); background: var(--cp-accent); color: var(--cp-accent-fg); text-decoration: none; text-align: center; font-weight: 600; }
-.install-address { user-select: all; padding: var(--space-3); margin-top: var(--space-4); background: var(--cp-surface); border: 1px solid var(--cp-border); border-radius: var(--radius); }
 [hidden] { display: none !important; }
 @media (max-width: 940px) { .workspace { padding: var(--space-6); } }
 @media (forced-colors: active) {

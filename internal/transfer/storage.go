@@ -168,6 +168,7 @@ func (s *Service) storeText(ctx context.Context, id, name, text string) (Item, e
 		return Item{}, err
 	}
 	s.state = next
+	s.lastError = ""
 	return item, nil
 }
 
@@ -197,5 +198,6 @@ func (s *Service) publishFile(ctx context.Context, temporary string, item Item) 
 		return errors.Join(err, os.Remove(item.Path))
 	}
 	s.state = next
+	s.lastError = ""
 	return nil
 }

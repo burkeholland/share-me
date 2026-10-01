@@ -115,16 +115,9 @@ func (a *App) initialize() error {
 	if err != nil {
 		return err
 	}
-	if len(networks) == 0 {
-		return errors.New("no local network found. Connect this PC to your home network, then click Refresh")
-	}
-	ip := a.prefs.IP
-	available := false
-	for _, network := range networks {
-		available = available || network.IP == ip
-	}
-	if !available {
-		ip = networks[0].IP
+	ip, err := selectNetworkIP(a.prefs.IP, networks)
+	if err != nil {
+		return err
 	}
 	return a.startTransport(ip)
 }
@@ -194,6 +187,10 @@ func (a *App) GetState() (ViewState, error) {
 		return state, nil
 	}
 	state.Status = a.service.Status()
+	if state.Status.Running && a.activeIP != "" && !networkAssigned(a.activeIP, networks) {
+		notices = append(notices, "This PC's network address changed. Select Pause, then Resume.")
+		state.Error = strings.Join(notices, "\n")
+	}
 	state.Pending = a.service.Pending()
 	state.Items, err = a.service.List()
 	if err != nil {
@@ -235,6 +232,14 @@ func (a *App) Start(ip string) error {
 		return errors.New("pause receiving before changing networks")
 	}
 	if err := a.loadPreferences(); err != nil {
+		return err
+	}
+	networks, err := transfer.Networks()
+	if err != nil {
+		return err
+	}
+	ip, err = selectNetworkIP(ip, networks)
+	if err != nil {
 		return err
 	}
 	if err := a.startTransport(ip); err != nil {
@@ -317,7 +322,7 @@ func (a *App) notifyError(err error) {
 	closed := a.closed
 	a.mu.Unlock()
 	log.Printf("Transfer rejected: %v", err)
-	if ctx != nil && !closed {
+	if ctx != nil && !closed && !errors.Is(err, peer.ErrReconnecting) {
 		wailsruntime.EventsEmit(ctx, "transfer:error", err.Error())
 	}
 }
@@ -368,10 +373,8 @@ func (a *App) OpenInbox() error {
 	if err := command.Start(); err != nil {
 		return fmt.Errorf("open inbox: %w", err)
 	}
-	go func() {
-		if err := command.Wait(); err != nil {
-			log.Printf("Explorer exited: %v", err)
-		}
-	}()
+	if err := command.Process.Release(); err != nil {
+		return fmt.Errorf("release Explorer process: %w", err)
+	}
 	return nil
 }

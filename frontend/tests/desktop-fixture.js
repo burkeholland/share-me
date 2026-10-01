@@ -2,6 +2,9 @@ import { basename, resolve } from 'node:path';
 
 export async function serveDesktop(page, url) {
   const origin = new URL(url).origin;
+  await page.route(`${origin}/theme-init.js`, route => route.fulfill({
+    contentType: 'text/javascript', path: resolve('dist', 'theme-init.js'),
+  }));
   await page.route(`${origin}/assets/**`, route => route.fulfill({
     path: resolve('dist', 'assets', basename(new URL(route.request().url()).pathname)),
   }));

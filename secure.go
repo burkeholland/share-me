@@ -115,7 +115,7 @@ func (a *App) RevokePhone(id string) error {
 	for _, item := range a.outbox.List(id) {
 		result = errors.Join(result, a.outbox.Remove(item.ID))
 	}
-	if len(a.engine.Devices()) == 0 {
+	if len(a.engine.Devices()) == 0 && a.service != nil && a.service.Status().Running {
 		link, err := a.engine.BeginPairing()
 		if err != nil {
 			return errors.Join(result, fmt.Errorf("phone removed, but a new pairing QR could not be created: %w", err))

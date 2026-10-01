@@ -157,8 +157,9 @@ function renderStatus() {
   toggle.disabled = !state.networks?.length;
   openFolder.disabled = !status.inboxDir;
   const peerError = state.secure && status.running && !state.serviceConnected ? state.peerMessage : '';
-  banner.hidden = !error && !status.error && !peerError;
-  banner.textContent = error || status.error || peerError || '';
+  const messages = [error, status.error, peerError].filter(Boolean);
+  banner.hidden = !messages.length;
+  banner.textContent = messages.join('\n');
   const select = document.getElementById('network');
   if (select) select.disabled = status.running;
   renderSettings();

@@ -1,6 +1,6 @@
-// Package transfer implements receive-only transfers over HTTP on a trusted LAN.
-// HTTP does not encrypt transfers. Every transfer requires an explicit local
-// decision. No HTTP route exposes approval controls, paths, history, or clipboard.
+// Package transfer shares handlers between local HTTP and authenticated peer
+// streams. Incoming transfers require explicit local approval; outbox downloads
+// are device-scoped. No route exposes local approval controls or clipboard.
 package transfer
 
 import (
@@ -118,8 +118,8 @@ func (run *serverRun) close() error {
 }
 
 // New loads durable metadata. A DataDir must have one owning Service/process.
-// Assets should be fs.Sub(embedFS, "frontend/dist"); only phone.html and assets/
-// are reachable. AllowLoopback is exclusively for explicit development/tests.
+// Assets should be fs.Sub(embedFS, "frontend/dist"); only phone.html,
+// theme-init.js and assets/ are reachable. AllowLoopback is for development/tests.
 func New(config Config) (*Service, error) {
 	if strings.TrimSpace(config.DataDir) == "" {
 		return nil, errors.New("data directory is required")
@@ -160,6 +160,8 @@ func New(config Config) (*Service, error) {
 	if err := service.load(); err != nil {
 		return nil, err
 	}
+	cleanupTemporaryFiles(config.DataDir, ".shareme-state-")
+	cleanupTemporaryFiles(filepath.Join(config.InboxDir, ".shareme-quarantine"), ".shareme-upload-")
 	return service, nil
 }
 

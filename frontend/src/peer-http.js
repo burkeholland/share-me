@@ -3,9 +3,10 @@ const CHUNK = 16384;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
-export class PeerStream {
-  constructor(channel) {
+class PeerStream {
+  constructor(channel, onFailure) {
     this.channel = channel;
+    this.onFailure = onFailure;
     this.credit = WINDOW;
     this.budget = WINDOW;
     this.queue = [];
@@ -54,7 +55,9 @@ export class PeerStream {
   wait() { return new Promise(resolve => this.waiters.add(resolve)); }
 
   fail(error) {
-    if (!this.error) this.error = error;
+    if (this.error) return;
+    this.error = error;
+    this.onFailure?.();
     this.channel.close();
     this.wake();
   }
@@ -134,11 +137,9 @@ export function createPeerFetch(connection) {
     }
     signal?.throwIfAborted();
     active++;
-    const id = crypto.randomUUID().replaceAll('-', '');
-    const stream = new PeerStream(connection.createDataChannel(`shareme.http.${id}`, { ordered: true }));
-    const abort = () => stream.fail(new DOMException('Cancelled.', 'AbortError'));
-    signal?.addEventListener('abort', abort, { once: true });
-    const deadline = setTimeout(() => stream.fail(new Error('Transfer timed out. Check the PC inbox.')), 30 * 60 * 1000);
+    let stream;
+    let deadline;
+    const abort = () => stream?.fail(new DOMException('Cancelled.', 'AbortError'));
     let cleaned = false;
     const cleanup = () => {
       if (cleaned) return;
@@ -147,51 +148,56 @@ export function createPeerFetch(connection) {
       clearTimeout(deadline);
       signal?.removeEventListener('abort', abort);
     };
-    const headers = new Headers(inputHeaders);
-    for (const name of ['host', 'connection', 'content-length', 'transfer-encoding', 'origin']) headers.delete(name);
-    let source;
-    let chunked = false;
-    let length = 0;
-    if (body instanceof FormData) {
-      const encoded = new Response(body);
-      source = encoded.body.getReader();
-      headers.set('Content-Type', encoded.headers.get('Content-Type'));
-      chunked = true;
-    } else if (body != null) {
-      const bytes = typeof body === 'string' ? encoder.encode(body) :
-        body instanceof Uint8Array ? body : new Uint8Array(await body.arrayBuffer());
-      length = bytes.length;
-      source = new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }).getReader();
-    }
-    let request = `${method} ${path} HTTP/1.1\r\nHost: peer.shareme\r\nConnection: close\r\n`;
-    request += chunked ? 'Transfer-Encoding: chunked\r\n' : `Content-Length: ${length}\r\n`;
-    for (const [name, value] of headers) {
-      if (/[\r\n]/.test(name + value)) { cleanup(); stream.fail(new Error('Invalid request header')); throw stream.error; }
-      request += `${name}: ${value}\r\n`;
-    }
-    request += '\r\n';
-    const write = async () => {
-      await stream.write(encoder.encode(request));
-      let sent = 0;
-      try {
-        while (source) {
-          const { value, done } = await source.read();
-          if (done) break;
-          if (chunked) await stream.write(encoder.encode(`${value.length.toString(16)}\r\n`));
-          await stream.write(value);
-          if (chunked) await stream.write(encoder.encode('\r\n'));
-          sent += value.length;
-          onProgress?.(sent);
-        }
-        if (chunked) await stream.write(encoder.encode('0\r\n\r\n'));
-        // HTTP framing ends the request. A transport FIN here would cancel
-        // Go's request context while approval/scanning is still running.
-      } finally {
-        source?.releaseLock();
-      }
-    };
-    write().catch(error => { if (!stream.remoteFin) stream.fail(error); });
     try {
+      const id = crypto.randomUUID().replaceAll('-', '');
+      stream = new PeerStream(connection.createDataChannel(`shareme.http.${id}`, { ordered: true }), cleanup);
+      signal?.addEventListener('abort', abort, { once: true });
+      signal?.throwIfAborted();
+      deadline = setTimeout(() => stream.fail(new Error('Transfer timed out. Check the PC inbox.')), 30 * 60 * 1000);
+      const headers = new Headers(inputHeaders);
+      for (const name of ['host', 'connection', 'content-length', 'transfer-encoding', 'origin']) headers.delete(name);
+      let source;
+      let chunked = false;
+      let length = 0;
+      if (body instanceof FormData) {
+        const encoded = new Response(body);
+        source = encoded.body.getReader();
+        headers.set('Content-Type', encoded.headers.get('Content-Type'));
+        chunked = true;
+      } else if (body != null) {
+        const bytes = typeof body === 'string' ? encoder.encode(body) :
+          body instanceof Uint8Array ? body : new Uint8Array(await body.arrayBuffer());
+        length = bytes.length;
+        source = new ReadableStream({ start(controller) { controller.enqueue(bytes); controller.close(); } }).getReader();
+      }
+      let request = `${method} ${path} HTTP/1.1\r\nHost: peer.shareme\r\nConnection: close\r\n`;
+      request += chunked ? 'Transfer-Encoding: chunked\r\n' : `Content-Length: ${length}\r\n`;
+      for (const [name, value] of headers) {
+        if (/[\r\n]/.test(name + value)) throw new Error('Invalid request header');
+        request += `${name}: ${value}\r\n`;
+      }
+      request += '\r\n';
+      const write = async () => {
+        await stream.write(encoder.encode(request));
+        let sent = 0;
+        try {
+          while (source) {
+            const { value, done } = await source.read();
+            if (done) break;
+            if (chunked) await stream.write(encoder.encode(`${value.length.toString(16)}\r\n`));
+            await stream.write(value);
+            if (chunked) await stream.write(encoder.encode('\r\n'));
+            sent += value.length;
+            onProgress?.(sent);
+          }
+          if (chunked) await stream.write(encoder.encode('0\r\n\r\n'));
+          // HTTP framing ends the request. A transport FIN here would cancel
+          // Go's request context while approval/scanning is still running.
+        } finally {
+          source?.releaseLock();
+        }
+      };
+      write().catch(error => { if (!stream.remoteFin) stream.fail(error); });
       const reader = new Reader(stream);
       let status;
       let responseHeaders;
@@ -278,7 +284,7 @@ export function createPeerFetch(connection) {
       }, { highWaterMark: 0 });
       return new Response(responseBody, { status, headers: responseHeaders });
     } catch (error) {
-      stream.fail(error);
+      stream?.fail(error);
       cleanup();
       throw error;
     }

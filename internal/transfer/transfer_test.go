@@ -63,9 +63,12 @@ func newFixture(t *testing.T, maxBytes int64, options ...func(*Config)) *fixture
 		AllowLoopback: true, MaxFileBytes: maxBytes, ApprovalTimeout: 3 * time.Second,
 		ScanFile: func(context.Context, string) error { return nil },
 		Assets: fstest.MapFS{
-			"phone.html":    &fstest.MapFile{Data: []byte("<html>phone only</html>")},
-			"index.html":    &fstest.MapFile{Data: []byte("desktop secret")},
-			"assets/app.js": &fstest.MapFile{Data: []byte("console.log('phone')")},
+			"phone.html":           &fstest.MapFile{Data: []byte("<html>phone only</html>")},
+			"index.html":           &fstest.MapFile{Data: []byte("desktop secret")},
+			"assets/app.js":        &fstest.MapFile{Data: []byte("console.log('phone')")},
+			"theme-init.js":        &fstest.MapFile{Data: []byte("console.log('theme')")},
+			"save-worker.js":       &fstest.MapFile{Data: []byte("worker")},
+			"manifest.webmanifest": &fstest.MapFile{Data: []byte("{}")},
 		},
 	}
 	for _, option := range options {

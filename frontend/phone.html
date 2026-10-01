@@ -10,14 +10,7 @@
   <meta name="referrer" content="no-referrer">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/icons/share-me-180.png">
-  <script>
-    (() => {
-      const param = new URLSearchParams(window.location.search).get("scoutTheme");
-      const theme =
-        param || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-      document.documentElement.setAttribute("data-theme", theme);
-    })();
-  </script>
+  <script src="/theme-init.js"></script>
   <title>Send to your PC - Share Me</title>
 </head>
 <body>

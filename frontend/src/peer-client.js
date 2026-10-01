@@ -5,7 +5,7 @@ const decode = new TextDecoder();
 const idPattern = /^[a-f0-9]{32}$/;
 const base64Pattern = /^[A-Za-z0-9_-]+$/;
 
-export function unbase64(value, length) {
+function unbase64(value, length) {
   if (typeof value !== 'string' || !base64Pattern.test(value)) throw new Error('Invalid connection credential');
   const data = Uint8Array.from(atob(value.replaceAll('-', '+').replaceAll('_', '/')), c => c.charCodeAt(0));
   if (length !== undefined && data.length !== length) throw new Error('Invalid connection credential');
@@ -16,7 +16,7 @@ export function base64(data) {
   return btoa(Array.from(new Uint8Array(data), c => String.fromCharCode(c)).join('')).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 
-export function importSecret(raw) {
+function importSecret(raw) {
   return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt']);
 }
 
@@ -24,13 +24,13 @@ function aad(room, sid, kid, kind) {
   return encode.encode(`ShareMe signal v1\n${room}\n${sid}\n${kid}\n${kind}`);
 }
 
-export async function seal(key, room, sid, kid, kind, payload) {
+async function seal(key, room, sid, kid, kind, payload) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
   const data = await crypto.subtle.encrypt({ name: 'AES-GCM', iv, additionalData: aad(room, sid, kid, kind) }, key, encode.encode(JSON.stringify(payload)));
   return { type: 'signal', sid, kid, kind, iv: base64(iv), data: base64(data) };
 }
 
-export async function openEnvelope(key, room, sid, kid, message) {
+async function openEnvelope(key, room, sid, kid, message) {
   if (message.sid !== sid || message.kid !== kid || message.kind !== 'answer') throw new Error('Connection verification failed');
   const plain = await crypto.subtle.decrypt({
     name: 'AES-GCM', iv: unbase64(message.iv, 12), additionalData: aad(room, sid, kid, 'answer'),
@@ -49,7 +49,7 @@ async function database() {
   });
 }
 
-export async function storedPC(room) {
+async function storedPC(room) {
   const db = await database();
   try {
     return await new Promise((resolve, reject) => {
