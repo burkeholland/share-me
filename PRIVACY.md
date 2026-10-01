@@ -56,7 +56,9 @@ hosting provider, handles ordinary connection information under the
 
 The history, text, and outbox copies are not encrypted by Share Me. They rely
 on your Windows account permissions and any disk encryption you use. Share Me
-does not delete received files or history automatically.
+does not delete received files or history automatically. When it starts, it
+removes only its own unfinished temporary files left by an interrupted
+transfer.
 
 The interface uses Microsoft Edge WebView2, which keeps its own browser data
 on the PC. **Start with Windows** adds a startup entry for your Windows

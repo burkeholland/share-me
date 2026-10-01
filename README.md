@@ -15,7 +15,7 @@ Pairing is once per browser or installed Home Screen app. The initial QR contain
 
 In **Settings > Phones**, choose **Rename** to open the name editor. **Save** applies the new name; **Cancel**, **X**, or **Escape** discards the edit.
 
-Removing the last phone refreshes the pairing QR automatically. To reconnect a removed phone, scan the new QR and approve it again; its previous saved connection is no longer authorized. If other phones are still paired, choose **Add phone** first.
+Removing the last phone refreshes the pairing QR automatically while receiving is running. **Rename** and **Forget** also work while receiving is paused; no new QR is created until you select **Resume**. To reconnect a removed phone, scan the new QR and approve it again; its previous saved connection is no longer authorized. If other phones are still paired, choose **Add phone** first.
 
 Outgoing files are immutable snapshots for the selected phone, not links to the original files. They survive app restarts and remain available until removed on Windows. **Accepted** means the phone requested the transfer, not proof it finished saving. Revocation disconnects the browser and removes its queued offers.
 
@@ -29,7 +29,7 @@ Keep both devices on the same trusted network and the PC awake. By default, **Cl
 
 Startup applies only to the current Windows user and does not need administrator access. It uses the executable's current location, so keep the executable there; opening it from a new location updates an enabled startup entry. Turning startup off removes only Share Me's entry. Windows Startup apps can independently disable automatic launch. The Microsoft Store version uses a Windows startup task instead of a Run entry: if it was turned off in **Windows Settings > Apps > Startup**, turn it back on there.
 
-If Windows Firewall asks, allow **Private networks only**. Pause receiving before changing adapters in Settings.
+If Windows Firewall asks, allow **Private networks only**. Pause receiving before changing adapters in Settings. If the PC's network address changes while receiving is running, Share Me shows a notice instead of rebinding by itself: select **Pause**, then **Resume**. Resume keeps the selected adapter when it is still available; otherwise it uses the first available private network and saves that choice.
 
 ## File safety
 
@@ -57,11 +57,11 @@ Limits: **2 GiB per file**, **64 KiB per text transfer**, **50 queued files** on
 
 The HTTPS bookmark stays the same when the PC's LAN address changes. Guest Wi-Fi isolation, VPNs, and firewalls may prevent a direct connection; there is deliberately no cloud file-relay fallback. Keep the phone page open and the PC awake. If the phone connection drops after suspension, use **Reconnect**. Safari on a physical iPhone still needs a final device-specific check; Windows Playwright WebKit supports the streaming save flow but does not implement WebRTC.
 
-Received history/text and outgoing snapshots are stored unencrypted under `%APPDATA%\ShareMe`; each paired browser's secret and the host key are protected on the PC with Windows DPAPI. On the phone, the browser keeps its reconnect secret in IndexedDB and, after pairing, in the fragment of the page address, where code from the Share Me origin can read it. Connections saved by earlier builds keep their non-extractable WebCrypto key. Existing photos, history, and desktop settings are preserved during upgrades. No automatic inbox deletion is performed. Outbox limits are **20 items / 10 GiB total**.
+Received history/text and outgoing snapshots are stored unencrypted under `%APPDATA%\ShareMe`; each paired browser's secret and the host key are protected on the PC with Windows DPAPI. On the phone, the browser keeps its reconnect secret in IndexedDB and, after pairing, in the fragment of the page address, where code from the Share Me origin can read it. Connections saved by earlier builds keep their non-extractable WebCrypto key. Existing photos, history, and desktop settings are preserved during upgrades. No automatic inbox deletion is performed. At startup, Share Me removes only its own leftovers from an interrupted transfer: unpublished `.shareme-upload-*` files in the inbox's `.shareme-quarantine` folder and `.shareme-state-*` files in the data folder. Outbox limits are **20 items / 10 GiB total**.
 
 For development compatibility only, an explicit `"transport":"local"` in `%APPDATA%\ShareMe\settings.json` enables the older, unencrypted port **49321** receiver. It has no paired outbox access and must only be used on a trusted LAN. Secure mode is the default and never silently falls back to HTTP.
 
-The app requires the installed **WebView2 Runtime**, normally present on Windows 11. It is not code-signed and does not bypass Windows trust warnings.
+The app requires the installed **WebView2 Runtime**, normally present on Windows 11. The ZIP download is not code-signed and does not bypass Windows trust warnings. Microsoft signs the Microsoft Store package after certification.
 
 ## Build
 
@@ -131,6 +131,8 @@ Browser tests exercise the real receiver with temporary inboxes and local approv
 Set-Location frontend
 npm ci
 npm run build
+# Node unit tests for the phone's request slots, the theme bootstrap, and the built desktop CSP:
+npm run test:unit
 Set-Location ..
 go build -tags production -o .tools\bin\ShareMe-test.exe .
 # In another terminal: Set-Location service; npm run dev

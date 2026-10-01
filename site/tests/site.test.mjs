@@ -48,7 +48,7 @@ test('download points to the published Windows preview', () => {
   assert.ok(release.bytes > 0 && release.executableBytes > release.bytes);
   assert.match(html, /Unsigned preview/);
   assert.doesNotMatch(html, /Build for Windows|Windows download not published yet/);
-  assert.match(html, /#boundaries/);
+  assert.ok(html.includes('<a href="https://github.com/burkeholland/share-me/blob/main/PRIVACY.md">Privacy</a>'));
 });
 
 test('local stylesheet and image assets exist and images have matching dimensions', async () => {

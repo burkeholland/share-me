@@ -164,9 +164,16 @@ func (*Engine) Devices() []Device
 func (*Engine) RenameDevice(id, name string) error
 func (*Engine) RevokeDevice(id string) error
 func (*Engine) Status() (connected bool, message string)
+var ErrReconnecting error // wraps a lost or failed broker session
 ```
 
 Device and PairRequest fields have lower-camel-case JSON tags.
+
+A broker session that fails or drops is reported to `OnError` wrapped in
+`ErrReconnecting` (test with `errors.Is`; the cause stays in the chain) while the
+engine retries with backoff. It stays visible through Status and the log, and the
+desktop does not raise a transfer error for it. `RenameDevice` and `RevokeDevice`
+keep working after Close, so phones can be managed while receiving is paused.
 
 Accepted listener connections implement `PeerID() string`. RemoteAddr is a
 parseable `net.TCPAddr` with the selected peer address. Start returns after setup;

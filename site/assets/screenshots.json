@@ -12,13 +12,13 @@
     ]
   },
   "sources": {
-    "frontend/index.html": "b5b608159a817818c4f633c0a4aecdb57783443b145089505cdd2eb329942adf",
-    "frontend/phone.html": "7a1748cde46b7fb574881d20b5bce47486ffd50c5e5d2d27dc55ffcfbbcd0bb7",
-    "frontend/src/desktop.js": "039221ea9f79da2dd15c63be3a4a3f12f6f47339d66a8eb3f2d9a495c3ba88af",
+    "frontend/index.html": "a3219c07ded6e02b062df7d7f24ace9395db4845d330e03cfb2cb1c0c24212ee",
+    "frontend/phone.html": "631b5a7e82d410798d94b06e61d1882b348c4cfe016b57bb9a16e619363018bd",
+    "frontend/src/desktop.js": "4b5e213cdda4657740c239e77a47bf66e46ab78ea18e81f170c19af806fddd93",
     "frontend/src/phone.js": "485598245534f731be3e2059f9e56711d8d8451a05ad5aea38b8e73e40a31e04",
     "frontend/src/shared.js": "e14a1901101a23263e81f1699cd91d9ef5bae0ca1fc97d812bc034b653bd4376",
     "frontend/src/theme.css": "35a93bcaf897cda892fd133305205116d06b34af42abd3b58506078ee0d74059",
-    "frontend/src/style.css": "f28d9c14619e619f80e572db8885fcd8997b9ac30ebb83628efcd52311f3c631",
+    "frontend/src/style.css": "bf76206353ce21ddab2afc166c5f89c423b48b1992217b300f3403afccf3594b",
     "frontend/public/theme-init.js": "50924d7545cb02e9ac28c27be1e58ee171e9a4b448c397d52109539061985317",
     "frontend/vite.config.js": "7ec5131c89a4f3cfbc5f81cb679be0033d2d15a1aced308dc8371c6c1834dab3",
     "site/tests/capture.mjs": "0152069d319ac8b55210e7a2b6a07e2f152b0b9f82f4e9fa781cc660827fda09",
