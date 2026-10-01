@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -119,6 +120,39 @@ func TestTrayNilLifecycle(t *testing.T) {
 		if err := tray.Stop(); err != nil {
 			t.Fatal(err)
 		}
+	}
+}
+
+func TestTrayIconAddRetriesWhileExplorerIsBusy(t *testing.T) {
+	notify, timeout, delay := trayNotify, trayAddTimeout, trayAddRetryDelay
+	t.Cleanup(func() { trayNotify, trayAddTimeout, trayAddRetryDelay = notify, timeout, delay })
+	trayAddRetryDelay = time.Millisecond
+	var messages []uintptr
+	refusals := 2
+	trayNotify = func(message uintptr, _ *trayNotifyIconData) bool {
+		messages = append(messages, message)
+		if message == trayNIMAdd && refusals > 0 {
+			refusals--
+			return false
+		}
+		return true
+	}
+	tray := &WindowsTray{}
+	if err := tray.addIcon(); err != nil || !tray.iconAdded {
+		t.Fatalf("a busy Explorer must not lose the tray: added=%v, %v", tray.iconAdded, err)
+	}
+	// A refused add can still go through later, so each one is followed by a delete.
+	want := []uintptr{trayNIMAdd, trayNIMDelete, trayNIMAdd, trayNIMDelete, trayNIMAdd, trayNIMSetVersion}
+	if !slices.Equal(messages, want) {
+		t.Fatalf("messages %v, want %v", messages, want)
+	}
+	refusals, messages, trayAddTimeout = 1<<30, nil, 20*time.Millisecond
+	tray = &WindowsTray{}
+	if err := tray.addIcon(); err == nil || tray.iconAdded {
+		t.Fatal("an Explorer that never accepts the icon must be reported")
+	}
+	if len(messages) < 4 || messages[len(messages)-1] != trayNIMDelete {
+		t.Fatalf("a refused icon must be retried and left removed: %v", messages)
 	}
 }
 
