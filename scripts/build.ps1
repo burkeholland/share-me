@@ -3,21 +3,16 @@ param(
     [string]$OutputName = 'ShareMe.exe'
 )
 $ErrorActionPreference = 'Stop'
+. (Join-Path $PSScriptRoot 'common.ps1')
 Set-Location (Split-Path $PSScriptRoot -Parent)
-$portableGo = Join-Path $PWD '.tools\go\bin'
-if (Test-Path (Join-Path $portableGo 'go.exe')) {
-    $env:PATH = "$portableGo;$env:PATH"
-}
-if (-not (Get-Command go -ErrorAction SilentlyContinue)) {
-    throw 'Install Go 1.25 or newer, then rerun scripts\build.ps1.'
-}
+$env:PATH = "$(Split-Path (Resolve-Go $PWD) -Parent);$env:PATH"
 if (-not (Get-Command npm -ErrorAction SilentlyContinue)) {
     throw 'Install Node.js 22.12 or newer, then rerun scripts\build.ps1.'
 }
 & (Join-Path $PSScriptRoot 'make-icon.ps1')
 $previousToolchain = $env:GOTOOLCHAIN
 try {
-    $env:GOTOOLCHAIN = 'go1.25.14'
+    $env:GOTOOLCHAIN = $GoToolchain
     if (-not $ServiceURL) {
         $config = Join-Path $PSScriptRoot 'service-url.json'
         if (Test-Path $config) { $ServiceURL = (Get-Content $config -Raw | ConvertFrom-Json).url }

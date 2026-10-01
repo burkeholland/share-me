@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -12,7 +13,17 @@ import (
 const startupKey = `Software\Microsoft\Windows\CurrentVersion\Run`
 const startupValue = "ShareMe"
 
+// startupTaskID must match the desktop:StartupTask TaskId in packaging\msix\AppxManifest.xml.in.
+const startupTaskID = "ShareMeStartup"
+
 type windowsStartupStore struct{}
+
+func currentStartupStore() startupStore {
+	if runningPackaged() {
+		return packagedStartupStore{}
+	}
+	return windowsStartupStore{}
+}
 
 func startupCommand(executable string) (string, error) {
 	if !filepath.IsAbs(executable) || strings.ContainsAny(executable, "\"\x00\r\n") {
@@ -64,6 +75,29 @@ func (windowsStartupStore) Write(value startupRegistration) error {
 		return key.SetExpandStringValue(startupValue, value.Command)
 	}
 	return key.SetStringValue(startupValue, value.Command)
+}
+
+// syncStartup runs at launch while Start with Windows is on. The ZIP build repairs a Run entry
+// that points at an old location. The Store build cannot override Windows: when the startup task
+// was turned off in Windows Settings, the preference follows it.
+func syncStartup(dir string, current preferences) (preferences, error) {
+	if runningPackaged() {
+		registration, err := packagedStartupStore{}.Read()
+		if err != nil || registration.Exists {
+			return current, err
+		}
+		next := current
+		next.StartWithWindows = false
+		if err := savePreferences(dir, next); err != nil {
+			return current, fmt.Errorf("save settings: %w", err)
+		}
+		return next, nil
+	}
+	executable, err := os.Executable()
+	if err != nil {
+		return current, err
+	}
+	return current, refreshStartupRegistration(executable)
 }
 
 func refreshStartupRegistration(executable string) error {

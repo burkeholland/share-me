@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:uap10="http://schemas.microsoft.com/appx/manifest/uap/windows10/10"
+  xmlns:desktop="http://schemas.microsoft.com/appx/manifest/desktop/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap uap10 desktop rescap">
+  <Identity
+    Name="{{IDENTITY_NAME}}"
+    Publisher="{{PUBLISHER}}"
+    Version="{{VERSION}}"
+    ProcessorArchitecture="x64" />
+  <Properties>
+    <DisplayName>{{PRODUCT_DISPLAY_NAME}}</DisplayName>
+    <PublisherDisplayName>{{PUBLISHER_DISPLAY_NAME}}</PublisherDisplayName>
+    <Description>Sends files and text between this PC and a paired phone browser over a direct, encrypted connection.</Description>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+  <Dependencies>
+    <!-- Windows 11 always includes the WebView2 Runtime that the interface needs. -->
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="10.0.22000.0"
+      MaxVersionTested="10.0.26200.0" />
+  </Dependencies>
+  <Capabilities>
+    <Capability Name="internetClient" />
+    <Capability Name="privateNetworkClientServer" />
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+  <Applications>
+    <Application
+      Id="ShareMe"
+      Executable="ShareMe.exe"
+      uap10:RuntimeBehavior="packagedClassicApp"
+      uap10:TrustLevel="mediumIL">
+      <uap:VisualElements
+        DisplayName="{{PRODUCT_DISPLAY_NAME}}"
+        Description="Sends files and text between this PC and a paired phone browser."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png" />
+      <Extensions>
+        <!-- TaskId must match startupTaskID in startup_windows.go. Off until the user turns on Start with Windows. -->
+        <desktop:Extension
+          Category="windows.startupTask"
+          Executable="ShareMe.exe"
+          EntryPoint="Windows.FullTrustApplication">
+          <desktop:StartupTask
+            TaskId="ShareMeStartup"
+            Enabled="false"
+            DisplayName="{{PRODUCT_DISPLAY_NAME}}" />
+        </desktop:Extension>
+      </Extensions>
+    </Application>
+  </Applications>
+</Package>

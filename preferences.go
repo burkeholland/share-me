@@ -140,7 +140,7 @@ func (a *App) SetDesktopSettings(settings DesktopSettings) error {
 	if err != nil {
 		return fmt.Errorf("find executable for Windows startup: %w", err)
 	}
-	next, err := commitDesktopSettings(a.dataDir, a.prefs, settings, windowsStartupStore{}, executable)
+	next, err := commitDesktopSettings(a.dataDir, a.prefs, settings, currentStartupStore(), executable)
 	if err != nil {
 		a.settingsErr = err.Error()
 		return err
