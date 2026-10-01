@@ -18,6 +18,11 @@ Nothing is transferred without a decision. Each file or text sent from the
 phone must be accepted on the PC. Each file or text sent from the PC must be
 accepted on the phone.
 
+Encrypted, direct transfer is the default and what the app uses unless you
+change it. A compatibility mode for developers, which you turn on yourself by
+editing `settings.json` as the README describes, uses unencrypted HTTP on your
+local network instead. Use that mode only on a network you trust.
+
 Share Me reads the Windows clipboard only when you select **Send clipboard
 text**, and writes to it only when you select a copy button.
 
@@ -72,8 +77,9 @@ Uninstalling the app deletes that folder, including paired phones and queued
 items. Files already saved in `Downloads\Share Me` are not removed.
 
 If the ZIP version ran on the PC before, the Store version keeps using the
-existing `%APPDATA%\ShareMe` folder, and uninstalling leaves it in place.
-Delete it yourself if you no longer need it.
+existing `%APPDATA%\ShareMe` folder and the WebView2 data in
+`%APPDATA%\ShareMe.exe`, and uninstalling leaves both in place. Delete them
+yourself if you no longer need them.
 
 Microsoft delivers and updates the Store version. Through Partner Center,
 Microsoft gives the developer aggregate reports such as installs, usage, and

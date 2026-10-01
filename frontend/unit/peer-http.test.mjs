@@ -12,7 +12,6 @@ class Channel {
   offset = 0;
   scheduled = false;
   started = false;
-  maxOutstanding = 0;
 
   constructor(status, body) {
     this.bytes = encoder.encode(`HTTP/1.1 ${status} Response\r\nContent-Length: ${body.length}\r\n\r\n${body}`);
@@ -33,7 +32,6 @@ class Channel {
         const data = this.bytes.slice(this.offset, this.offset + length);
         this.offset += length;
         this.credit -= length;
-        this.maxOutstanding = Math.max(this.maxOutstanding, 65536 - this.credit);
         this.onmessage({ data: data.buffer });
       }
       if (this.readyState === 'open' && this.offset === this.bytes.length) {
@@ -118,11 +116,30 @@ test('header, body, and channel setup failures release reservations', async () =
   assert.equal(await (await fetch(path)).text(), 'hello');
 });
 
-test('successful multi-window streaming keeps credit bounded', async () => {
+test('an unread response holds the PC to one window until it is read', async () => {
+  const settle = () => new Promise(resolve => setImmediate(resolve));
   const body = 'x'.repeat(2 * 1024 * 1024);
   const pc = connection(() => [200, body]);
-  const fetch = createPeerFetch(pc);
-  assert.equal(await (await fetch(path)).text(), body);
-  assert.ok(pc.channels[0].maxOutstanding <= 65536);
-  assert.equal(await (await fetch(path)).text(), body);
+  const response = await createPeerFetch(pc)(path);
+  const reader = response.body.getReader();
+  try {
+    await settle();
+    const channel = pc.channels[0];
+    // The header parser holds one packet, so one more than a full window can be outstanding.
+    const limit = 65536 + 16384;
+    assert.equal(channel.offset, limit);
+    let read = channel.bytes.length - body.length;
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      assert.ok(value.every(byte => byte === 120));
+      read += value.length;
+      await settle();
+      assert.ok(channel.offset - read <= limit);
+    }
+    assert.equal(read, channel.bytes.length);
+  } finally {
+    // A failed assertion must not leave the request's 30-minute deadline keeping the run alive.
+    await reader.cancel();
+  }
 });

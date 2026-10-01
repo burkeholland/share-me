@@ -7,7 +7,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
     "test": "playwright test",
-    "test:unit": "node --test unit\\peer-http.test.mjs unit\\theme.test.mjs"
+    "test:unit": "node --test unit/peer-http.test.mjs unit/theme.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
