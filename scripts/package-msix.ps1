@@ -25,19 +25,31 @@ if (-not $OutputDirectory) { $OutputDirectory = Join-Path $root 'build\bin' }
 $Executable = (Resolve-Path -LiteralPath $Executable).Path
 $OutputDirectory = [IO.Path]::GetFullPath($OutputDirectory)
 
-$info = (Get-Item -LiteralPath $Executable).VersionInfo
+$flavor = if ($identity.Store) { 'store' } else { 'development' }
+$stage = Join-Path $root "build\bin\msix\$flavor"
+$layout = Join-Path $stage 'layout'
+$priRoot = Join-Path $stage 'pri'
+$verification = Join-Path $stage 'verification'
+if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+New-Item -ItemType Directory -Force $layout, "$priRoot\Assets", $verification, $OutputDirectory | Out-Null
+
+# Copy the executable once. Every check and the receipt read this copy, so a rebuild during
+# packaging cannot put an unchecked executable in the package.
+$staged = Join-Path $layout 'ShareMe.exe'
+Copy-Item -LiteralPath $Executable -Destination $staged
+$info = (Get-Item -LiteralPath $staged).VersionInfo
 $exeVersion = '{0}.{1}.{2}' -f $info.FileMajorPart, $info.FileMinorPart, $info.FileBuildPart
 if ($exeVersion -ne $version) { throw "The executable is version $exeVersion, but wails.json says $version. Run scripts\build.ps1 first." }
 # A plain `go build` has no connection-service address and cannot pair with a phone.
 $serviceURL = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'service-url.json') -Raw | ConvertFrom-Json).url
-if (-not [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($Executable)).Contains($serviceURL)) {
+if (-not [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($staged)).Contains($serviceURL)) {
     throw "The executable was not built with the connection service $serviceURL. Run scripts\build.ps1 first."
 }
 $go = Resolve-Go $root
 $previousToolchain = $env:GOTOOLCHAIN
 try {
     $env:GOTOOLCHAIN = $GoToolchain
-    $buildInfo = Get-ProductionBuildInfo $go $Executable
+    $buildInfo = Get-ProductionBuildInfo $go $staged
     $notices = Get-ThirdPartyNotices $root $go $buildInfo
 } finally {
     $env:GOTOOLCHAIN = $previousToolchain
@@ -57,15 +69,6 @@ function Invoke-Quiet([string]$Command, [string[]]$Arguments) {
 $makeAppx = Find-SdkTool 'makeappx.exe'
 $makePri = Find-SdkTool 'makepri.exe'
 
-$flavor = if ($identity.Store) { 'store' } else { 'development' }
-$stage = Join-Path $root "build\bin\msix\$flavor"
-$layout = Join-Path $stage 'layout'
-$priRoot = Join-Path $stage 'pri'
-$verification = Join-Path $stage 'verification'
-if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
-New-Item -ItemType Directory -Force $layout, "$priRoot\Assets", $verification, $OutputDirectory | Out-Null
-
-Copy-Item -LiteralPath $Executable -Destination (Join-Path $layout 'ShareMe.exe')
 Copy-Item -LiteralPath (Join-Path $root 'PRIVACY.md') -Destination $layout
 [IO.File]::WriteAllText((Join-Path $layout 'THIRD-PARTY-NOTICES.txt'), $notices, [Text.UTF8Encoding]::new($false))
 
@@ -207,7 +210,7 @@ $receipt = [ordered]@{
     signed = $false
     package = $package
     packageSha256 = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
-    executableSha256 = (Get-FileHash -LiteralPath $Executable -Algorithm SHA256).Hash.ToLowerInvariant()
+    executableSha256 = (Get-FileHash -LiteralPath $staged -Algorithm SHA256).Hash.ToLowerInvariant()
     fileCount = $staged.Count
     verifiedByUnpack = $true
 }

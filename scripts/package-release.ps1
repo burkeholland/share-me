@@ -24,10 +24,17 @@ if ((Test-Path -LiteralPath $stage) -or (Test-Path -LiteralPath $archive)) {
 }
 try {
     $env:GOTOOLCHAIN = $GoToolchain
-    $buildInfo = Get-ProductionBuildInfo $go $Executable
-    $notices = Get-ThirdPartyNotices $root $go $buildInfo
     New-Item -ItemType Directory -Path $stage | Out-Null
-    Copy-Item -LiteralPath $Executable -Destination (Join-Path $stage 'ShareMe.exe')
+    # Copy the executable once. The checks, the build record, and the archive all use this copy.
+    $staged = Join-Path $stage 'ShareMe.exe'
+    Copy-Item -LiteralPath $Executable -Destination $staged
+    try {
+        $buildInfo = Get-ProductionBuildInfo $go $staged
+        $notices = Get-ThirdPartyNotices $root $go $buildInfo
+    } catch {
+        Remove-Item -LiteralPath $stage -Recurse -Force
+        throw
+    }
     [IO.File]::WriteAllText((Join-Path $stage 'THIRD-PARTY-NOTICES.txt'), $notices, [Text.UTF8Encoding]::new($false))
     $readme = @"
 Share Me $version - Windows x64 preview
@@ -57,19 +64,19 @@ Source: https://github.com/burkeholland/share-me/tree/$SourceCommit
 Instructions: https://github.com/burkeholland/share-me#use
 "@
     [IO.File]::WriteAllText((Join-Path $stage 'README.txt'), $readme, [Text.UTF8Encoding]::new($false))
-    $exeHash = (Get-FileHash -LiteralPath $Executable -Algorithm SHA256).Hash.ToLowerInvariant()
+    $exeHash = (Get-FileHash -LiteralPath $staged -Algorithm SHA256).Hash.ToLowerInvariant()
     $metadata = [ordered]@{
         version = $version
         platform = 'windows-x64'
         preview = $true
         sourceCommit = $SourceCommit
         goVersion = $GoToolchain -replace '^go'
-        executableBytes = (Get-Item -LiteralPath $Executable).Length
+        executableBytes = (Get-Item -LiteralPath $staged).Length
         executableSHA256 = $exeHash
         signed = $false
     }
     $metadata | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $stage 'BUILD-INFO.json') -Encoding utf8NoBOM
-    Compress-Archive -LiteralPath (Join-Path $stage 'ShareMe.exe'), (Join-Path $stage 'README.txt'),
+    Compress-Archive -LiteralPath $staged, (Join-Path $stage 'README.txt'),
         (Join-Path $stage 'THIRD-PARTY-NOTICES.txt'), (Join-Path $stage 'BUILD-INFO.json') -DestinationPath $archive
     $zipHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
     [IO.File]::WriteAllText("$archive.sha256", "$zipHash  $name.zip`n", [Text.UTF8Encoding]::new($false))

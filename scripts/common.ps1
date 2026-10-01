@@ -21,8 +21,14 @@ function Get-ProductionBuildInfo {
     param([string]$Go, [string]$Executable)
     $buildInfo = @(& $Go version -m $Executable)
     if ($LASTEXITCODE -ne 0) { throw 'Could not read executable build information.' }
-    if (-not ($buildInfo -match 'GOOS=windows') -or -not ($buildInfo -match 'GOARCH=amd64') -or
-        -not ($buildInfo -match 'production') -or $buildInfo[0] -notmatch "$([regex]::Escape($GoToolchain))`$") {
+    # Read the build settings themselves. A folder or module name can contain any of these words.
+    $settings = @{}
+    foreach ($line in $buildInfo) {
+        if ($line -match '^\s+build\s+([^\s=]+)=(.*)$') { $settings[$Matches[1]] = $Matches[2] }
+    }
+    if ($settings['GOOS'] -cne 'windows' -or $settings['GOARCH'] -cne 'amd64' -or
+        @("$($settings['-tags'])".Split(',')) -cnotcontains 'production' -or
+        $buildInfo[0] -notmatch "$([regex]::Escape($GoToolchain))`$") {
         throw "Expected the production Windows x64 executable built with $GoToolchain."
     }
     return $buildInfo
