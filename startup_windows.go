@@ -77,27 +77,36 @@ func (windowsStartupStore) Write(value startupRegistration) error {
 	return key.SetStringValue(startupValue, value.Command)
 }
 
-// syncStartup runs at launch while Start with Windows is on. The ZIP build repairs a Run entry
-// that points at an old location. The Store build cannot override Windows: when the startup task
-// was turned off in Windows Settings, the preference follows it.
+// syncStartup runs at launch. The Store build cannot override Windows, and the startup task can
+// also be switched in Windows Settings, so the preference follows the task in both directions.
+// The ZIP build repairs a Run entry that points at an old location while Start with Windows is on.
 func syncStartup(dir string, current preferences) (preferences, error) {
 	if runningPackaged() {
-		registration, err := packagedStartupStore{}.Read()
-		if err != nil || registration.Exists {
-			return current, err
-		}
-		next := current
-		next.StartWithWindows = false
-		if err := savePreferences(dir, next); err != nil {
-			return current, fmt.Errorf("save settings: %w", err)
-		}
-		return next, nil
+		return adoptStartupState(dir, current, packagedStartupStore{})
+	}
+	if !current.StartWithWindows {
+		return current, nil
 	}
 	executable, err := os.Executable()
 	if err != nil {
 		return current, err
 	}
 	return current, refreshStartupRegistration(executable)
+}
+
+// adoptStartupState saves the startup state Windows reports as the preference. It never writes
+// to Windows.
+func adoptStartupState(dir string, current preferences, store startupStore) (preferences, error) {
+	registration, err := store.Read()
+	if err != nil || registration.Exists == current.StartWithWindows {
+		return current, err
+	}
+	next := current
+	next.StartWithWindows = registration.Exists
+	if err := savePreferences(dir, next); err != nil {
+		return current, fmt.Errorf("save settings: %w", err)
+	}
+	return next, nil
 }
 
 func refreshStartupRegistration(executable string) error {

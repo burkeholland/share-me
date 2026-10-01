@@ -140,7 +140,15 @@ func (a *App) SetDesktopSettings(settings DesktopSettings) error {
 	if err != nil {
 		return fmt.Errorf("find executable for Windows startup: %w", err)
 	}
-	next, err := commitDesktopSettings(a.dataDir, a.prefs, settings, currentStartupStore(), executable)
+	store := currentStartupStore()
+	if runningPackaged() && settings.StartWithWindows == a.prefs.StartWithWindows {
+		// Windows owns the packaged startup task, which Windows Settings can switch while Share Me
+		// runs. A change that leaves the startup switch alone keeps what Windows has.
+		if registration, err := store.Read(); err == nil {
+			settings.StartWithWindows = registration.Exists
+		}
+	}
+	next, err := commitDesktopSettings(a.dataDir, a.prefs, settings, store, executable)
 	if err != nil {
 		a.settingsErr = err.Error()
 		return err

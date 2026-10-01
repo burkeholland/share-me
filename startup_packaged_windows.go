@@ -173,7 +173,18 @@ func (packagedStartupStore) Read() (startupRegistration, error) {
 func (packagedStartupStore) Write(value startupRegistration) error {
 	return withStartupTask(func(task *comObject) error {
 		if !value.Exists {
-			return task.call("turn off Windows startup", slotTaskDisable)
+			if err := task.call("turn off Windows startup", slotTaskDisable); err != nil {
+				return err
+			}
+			// Disable reports success even when a policy keeps the task on.
+			var state int32
+			if err := task.call("read Windows startup state", slotTaskState, uintptr(unsafe.Pointer(&state))); err != nil {
+				return err
+			}
+			if state == startupTaskEnabled || state == startupTaskEnabledByPolicy {
+				return errors.New("Windows keeps startup on for Share Me because of an organization policy")
+			}
+			return nil
 		}
 		var operation *comObject
 		if err := task.call("turn on Windows startup", slotTaskRequestEnable, uintptr(unsafe.Pointer(&operation))); err != nil {
