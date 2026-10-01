@@ -99,13 +99,19 @@ type startupStore interface {
 	Write(startupRegistration) error
 }
 
-func commitDesktopSettings(dir string, current preferences, next DesktopSettings, store startupStore, executable string) (preferences, error) {
-	updated := current
-	updated.DesktopSettings = next
+// commitDesktopSettings applies the startup choice, then saves the settings. With followWindows,
+// which the Store build sets, Windows owns the startup state and Windows Settings can switch it
+// while Share Me runs: a change that leaves the startup switch alone keeps what Windows has.
+func commitDesktopSettings(dir string, current preferences, next DesktopSettings, store startupStore, executable string, followWindows bool) (preferences, error) {
 	previous, err := store.Read()
 	if err != nil {
 		return current, fmt.Errorf("read Windows startup setting: %w", err)
 	}
+	if followWindows && next.StartWithWindows == current.StartWithWindows {
+		next.StartWithWindows = previous.Exists
+	}
+	updated := current
+	updated.DesktopSettings = next
 	command, err := startupCommand(executable)
 	if err != nil {
 		return current, err
@@ -140,15 +146,7 @@ func (a *App) SetDesktopSettings(settings DesktopSettings) error {
 	if err != nil {
 		return fmt.Errorf("find executable for Windows startup: %w", err)
 	}
-	store := currentStartupStore()
-	if runningPackaged() && settings.StartWithWindows == a.prefs.StartWithWindows {
-		// Windows owns the packaged startup task, which Windows Settings can switch while Share Me
-		// runs. A change that leaves the startup switch alone keeps what Windows has.
-		if registration, err := store.Read(); err == nil {
-			settings.StartWithWindows = registration.Exists
-		}
-	}
-	next, err := commitDesktopSettings(a.dataDir, a.prefs, settings, store, executable)
+	next, err := commitDesktopSettings(a.dataDir, a.prefs, settings, currentStartupStore(), executable, runningPackaged())
 	if err != nil {
 		a.settingsErr = err.Error()
 		return err

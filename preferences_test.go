@@ -45,7 +45,7 @@ func TestDesktopSettingsPreserveNetworkAndPersist(t *testing.T) {
 	store := &fakeStartupStore{}
 	current := preferences{IP: "192.168.1.42"}
 	settings := DesktopSettings{StartWithWindows: true, StartMinimized: true, CloseToTray: true, MinimizeToTray: true}
-	updated, err := commitDesktopSettings(dir, current, settings, store, `C:\Share Me\ShareMe.exe`)
+	updated, err := commitDesktopSettings(dir, current, settings, store, `C:\Share Me\ShareMe.exe`, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -66,7 +66,7 @@ func TestDesktopSettingsPreserveNetworkAndPersist(t *testing.T) {
 		t.Fatal("changing network must not reset desktop settings")
 	}
 	disabled := DesktopSettings{}
-	updated, err = commitDesktopSettings(dir, saved, disabled, store, `C:\Share Me\ShareMe.exe`)
+	updated, err = commitDesktopSettings(dir, saved, disabled, store, `C:\Share Me\ShareMe.exe`, false)
 	if err != nil || store.value.Exists || updated.DesktopSettings != disabled {
 		t.Fatalf("disabling must remove startup and preserve explicit false settings: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestSettingsFailureRestoresExactStartupEntry(t *testing.T) {
 	before := startupRegistration{Exists: true, Command: `%LOCALAPPDATA%\OldShareMe.exe`, Expand: true}
 	store := &fakeStartupStore{value: before}
 	current := preferences{IP: "192.168.1.5"}
-	updated, err := commitDesktopSettings(dir, current, DesktopSettings{StartWithWindows: true}, store, `C:\New\ShareMe.exe`)
+	updated, err := commitDesktopSettings(dir, current, DesktopSettings{StartWithWindows: true}, store, `C:\New\ShareMe.exe`, false)
 	if err == nil || updated != current || store.value != before || len(store.writes) != 2 {
 		t.Fatalf("failed persistence must restore original entry: %+v, %+v, %v", updated, store, err)
 	}
@@ -94,7 +94,7 @@ func TestSettingsFailureRestoresExactStartupEntry(t *testing.T) {
 		t.Fatal("failed save must not leave temporary files")
 	}
 	store = &fakeStartupStore{value: before, failAt: 2}
-	_, err = commitDesktopSettings(dir, current, DesktopSettings{}, store, `C:\New\ShareMe.exe`)
+	_, err = commitDesktopSettings(dir, current, DesktopSettings{}, store, `C:\New\ShareMe.exe`, false)
 	if err == nil || !strings.Contains(err.Error(), "restore Windows startup") {
 		t.Fatalf("rollback failures must be reported: %v", err)
 	}
@@ -103,7 +103,7 @@ func TestSettingsFailureRestoresExactStartupEntry(t *testing.T) {
 func TestRegistryFailureDoesNotSavePreferences(t *testing.T) {
 	for _, store := range []*fakeStartupStore{{readErr: errors.New("registry unavailable")}, {failAt: 1}} {
 		dir := t.TempDir()
-		_, err := commitDesktopSettings(dir, preferences{}, DesktopSettings{StartWithWindows: true}, store, `C:\ShareMe.exe`)
+		_, err := commitDesktopSettings(dir, preferences{}, DesktopSettings{StartWithWindows: true}, store, `C:\ShareMe.exe`, false)
 		if err == nil {
 			t.Fatal("registry failures must be reported")
 		}

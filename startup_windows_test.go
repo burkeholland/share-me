@@ -44,10 +44,34 @@ func TestStartupPreferenceFollowsWindows(t *testing.T) {
 		// Saving another option afterwards must leave what Windows has.
 		settings := next.DesktopSettings
 		settings.CloseToTray = false
-		updated, err := commitDesktopSettings(dir, next, settings, store, `C:\ShareMe.exe`)
+		updated, err := commitDesktopSettings(dir, next, settings, store, `C:\ShareMe.exe`, true)
 		if err != nil || store.value.Exists != scenario.windows || updated.StartWithWindows != scenario.windows || updated.CloseToTray {
 			t.Fatalf("%+v: unrelated setting changed startup: %+v, %+v, %v", scenario, updated, store.value, err)
 		}
+	}
+	for _, windows := range []bool{true, false} {
+		// Windows Settings switched the task while the app was running, so the preference is stale.
+		dir := t.TempDir()
+		store := &fakeStartupStore{value: startupRegistration{Exists: windows}}
+		stale := preferences{DesktopSettings: DesktopSettings{StartWithWindows: !windows}}
+		settings := DesktopSettings{StartWithWindows: !windows, CloseToTray: true}
+		updated, err := commitDesktopSettings(dir, stale, settings, store, `C:\ShareMe.exe`, true)
+		if err != nil || store.value.Exists != windows || updated.StartWithWindows != windows || !updated.CloseToTray {
+			t.Fatalf("another option changed Windows startup %v: %+v, %+v, %v", windows, updated, store.value, err)
+		}
+		// The startup switch itself still changes Windows.
+		updated, err = commitDesktopSettings(dir, updated, settings, store, `C:\ShareMe.exe`, true)
+		if err != nil || store.value.Exists == windows || updated.StartWithWindows == windows {
+			t.Fatalf("the startup switch did not change Windows startup from %v: %+v, %+v, %v", windows, updated, store.value, err)
+		}
+	}
+	unreadable := &fakeStartupStore{value: startupRegistration{Exists: true}, readErr: errors.New("unavailable")}
+	unsaved := t.TempDir()
+	if _, err := commitDesktopSettings(unsaved, preferences{}, DesktopSettings{CloseToTray: true}, unreadable, `C:\ShareMe.exe`, true); err == nil || len(unreadable.writes) != 0 {
+		t.Fatalf("an unreadable startup state must stop the save without changing Windows: %v, %v", unreadable.writes, err)
+	}
+	if _, err := os.Stat(filepath.Join(unsaved, "settings.json")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatal("an unreadable startup state must not save settings")
 	}
 	current := preferences{DesktopSettings: DesktopSettings{StartWithWindows: true}}
 	if next, err := adoptStartupState(t.TempDir(), current, &fakeStartupStore{readErr: errors.New("unavailable")}); err == nil || next != current {
