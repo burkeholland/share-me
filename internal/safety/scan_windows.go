@@ -9,10 +9,11 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/sys/windows/registry"
 )
 
 func Scan(ctx context.Context, path string) error {
@@ -59,30 +60,53 @@ func scan(ctx context.Context, path string, locate func() (string, error), run f
 }
 
 func defenderPath() (string, error) {
-	root := filepath.Join(os.Getenv("ProgramData"), "Microsoft", "Windows Defender", "Platform")
-	entries, err := os.ReadDir(root)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return "", fmt.Errorf("locate Windows Defender: %w", err)
+	location, registryErr := defenderInstallLocation()
+	path, err := locateDefender(defenderCandidates(location, os.Getenv("ProgramFiles")), os.Stat)
+	if err != nil {
+		return "", errors.Join(err, registryErr)
 	}
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name() > entries[j].Name() })
-	for _, entry := range entries {
-		if !entry.IsDir() {
-			continue
-		}
-		path := filepath.Join(root, entry.Name(), "MpCmdRun.exe")
-		info, err := os.Stat(path)
-		if err == nil && !info.IsDir() {
+	return path, nil
+}
+
+func defenderInstallLocation() (location string, result error) {
+	key, err := registry.OpenKey(registry.LOCAL_MACHINE, `SOFTWARE\Microsoft\Windows Defender`, registry.QUERY_VALUE|registry.WOW64_64KEY)
+	if err != nil {
+		return "", fmt.Errorf("read Windows Defender location: %w", err)
+	}
+	defer func() { result = errors.Join(result, key.Close()) }()
+	location, kind, err := key.GetStringValue("InstallLocation")
+	if err != nil {
+		return "", fmt.Errorf("read Windows Defender InstallLocation: %w", err)
+	}
+	if kind == registry.EXPAND_SZ {
+		return registry.ExpandString(location)
+	}
+	return location, nil
+}
+
+func defenderCandidates(location, programFiles string) []string {
+	var candidates []string
+	if filepath.IsAbs(location) {
+		candidates = append(candidates, filepath.Join(location, "MpCmdRun.exe"))
+	}
+	if filepath.IsAbs(programFiles) {
+		candidates = append(candidates, filepath.Join(programFiles, "Windows Defender", "MpCmdRun.exe"))
+	}
+	return candidates
+}
+
+func locateDefender(candidates []string, stat func(string) (os.FileInfo, error)) (string, error) {
+	var failures []error
+	for _, path := range candidates {
+		info, err := stat(path)
+		if err == nil && info.Mode().IsRegular() {
 			return path, nil
 		}
-		if err != nil && !errors.Is(err, os.ErrNotExist) {
-			return "", fmt.Errorf("locate Windows Defender: %w", err)
+		if err != nil {
+			failures = append(failures, fmt.Errorf("check scanner %s: %w", path, err))
 		}
 	}
-	path := filepath.Join(os.Getenv("ProgramFiles"), "Windows Defender", "MpCmdRun.exe")
-	if info, err := os.Stat(path); err == nil && !info.IsDir() {
-		return path, nil
-	}
-	return "", errors.New("Windows Defender is unavailable. Files cannot be accepted until scanning is available")
+	return "", errors.Join(append([]error{errors.New("Windows Defender is unavailable. Files cannot be accepted until scanning is available")}, failures...)...)
 }
 
 func runDefender(ctx context.Context, program, path string) error {

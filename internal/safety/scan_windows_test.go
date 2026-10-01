@@ -70,3 +70,47 @@ func TestDefenderScanBenignFile(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDefenderLocatorCandidatesAndFallback(t *testing.T) {
+	dir := t.TempDir()
+	active := filepath.Join(dir, "active")
+	fallback := filepath.Join(dir, "Windows Defender")
+	for _, path := range []string{active, fallback} {
+		if err := os.MkdirAll(path, 0700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(path, "MpCmdRun.exe"), nil, 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, scenario := range []struct {
+		name, location, want string
+		denied               bool
+	}{
+		{"active registry location", active, filepath.Join(active, "MpCmdRun.exe"), false},
+		{"missing registry value", "", filepath.Join(fallback, "MpCmdRun.exe"), false},
+		{"unreadable active candidate", active, filepath.Join(fallback, "MpCmdRun.exe"), true},
+		{"missing active candidate", filepath.Join(dir, "missing"), filepath.Join(fallback, "MpCmdRun.exe"), false},
+		{"relative registry location", "relative", filepath.Join(fallback, "MpCmdRun.exe"), false},
+	} {
+		t.Run(scenario.name, func(t *testing.T) {
+			stat := func(path string) (os.FileInfo, error) {
+				if scenario.denied && path == filepath.Join(active, "MpCmdRun.exe") {
+					return nil, os.ErrPermission
+				}
+				return os.Stat(path)
+			}
+			path, err := locateDefender(defenderCandidates(scenario.location, dir), stat)
+			if err != nil || path != scenario.want {
+				t.Fatalf("scanner=%q error=%v", path, err)
+			}
+		})
+	}
+	if path, err := locateDefender([]string{dir, filepath.Join(dir, "missing")}, os.Stat); path != "" || err == nil ||
+		!strings.Contains(err.Error(), "Files cannot be accepted") || !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("total failure must be closed with diagnostics: path=%q error=%v", path, err)
+	}
+	if _, err := locateDefender(nil, os.Stat); err == nil {
+		t.Fatal("empty candidate list must fail closed")
+	}
+}
