@@ -10,10 +10,13 @@
     "deploy": "wrangler deploy"
   },
   "devDependencies": {
-    "@cloudflare/vitest-plugin": "1.1.5",
-    "@cloudflare/workers-types": "5.20260908.1",
+    "@cloudflare/vitest-plugin": "1.1.7",
+    "@cloudflare/workers-types": "5.20260921.1",
     "typescript": "5.9.3",
     "vitest": "4.1.11",
-    "wrangler": "4.129.1"
+    "wrangler": "4.138.0"
+  },
+  "overrides": {
+    "undici@7.29.0": "7.29.1"
   }
 }
