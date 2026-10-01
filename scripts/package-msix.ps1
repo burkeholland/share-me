@@ -35,21 +35,21 @@ New-Item -ItemType Directory -Force $layout, "$priRoot\Assets", $verification, $
 
 # Copy the executable once. Every check and the receipt read this copy, so a rebuild during
 # packaging cannot put an unchecked executable in the package.
-$staged = Join-Path $layout 'ShareMe.exe'
-Copy-Item -LiteralPath $Executable -Destination $staged
-$info = (Get-Item -LiteralPath $staged).VersionInfo
+$stagedExecutable = Join-Path $layout 'ShareMe.exe'
+Copy-Item -LiteralPath $Executable -Destination $stagedExecutable
+$info = (Get-Item -LiteralPath $stagedExecutable).VersionInfo
 $exeVersion = '{0}.{1}.{2}' -f $info.FileMajorPart, $info.FileMinorPart, $info.FileBuildPart
 if ($exeVersion -ne $version) { throw "The executable is version $exeVersion, but wails.json says $version. Run scripts\build.ps1 first." }
 # A plain `go build` has no connection-service address and cannot pair with a phone.
 $serviceURL = (Get-Content -LiteralPath (Join-Path $PSScriptRoot 'service-url.json') -Raw | ConvertFrom-Json).url
-if (-not [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($staged)).Contains($serviceURL)) {
+if (-not [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($stagedExecutable)).Contains($serviceURL)) {
     throw "The executable was not built with the connection service $serviceURL. Run scripts\build.ps1 first."
 }
 $go = Resolve-Go $root
 $previousToolchain = $env:GOTOOLCHAIN
 try {
     $env:GOTOOLCHAIN = $GoToolchain
-    $buildInfo = Get-ProductionBuildInfo $go $staged
+    $buildInfo = Get-ProductionBuildInfo $go $stagedExecutable
     $notices = Get-ThirdPartyNotices $root $go $buildInfo
 } finally {
     $env:GOTOOLCHAIN = $previousToolchain
@@ -210,7 +210,7 @@ $receipt = [ordered]@{
     signed = $false
     package = $package
     packageSha256 = (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant()
-    executableSha256 = (Get-FileHash -LiteralPath $staged -Algorithm SHA256).Hash.ToLowerInvariant()
+    executableSha256 = (Get-FileHash -LiteralPath $stagedExecutable -Algorithm SHA256).Hash.ToLowerInvariant()
     fileCount = $staged.Count
     verifiedByUnpack = $true
 }
