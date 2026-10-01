@@ -44,6 +44,17 @@ const test = base.extend({
         App[method] = (...args) => window.desktopAction(method, args);
       }
       window.go = { main: { App } };
+      let maximized = false;
+      window.runtime = {
+        WindowMinimise: () => window.desktopAction('WindowMinimise', []),
+        WindowToggleMaximise: () => {
+          maximized = !maximized;
+          window.desktopAction('WindowToggleMaximise', []);
+          window.dispatchEvent(new Event('resize'));
+        },
+        WindowIsMaximised: async () => maximized,
+        Quit: () => window.desktopAction('Quit', []),
+      };
     });
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -112,7 +123,7 @@ test.describe('dropdown focus outlines', () => {
   for (const width of [800, 960]) {
     for (const queued of [0, 20]) {
       test(`remain visible at ${width}px with ${queued} queued transfers`, async ({ page, desktop }, testInfo) => {
-        await page.setViewportSize({ width, height: 520 });
+        await page.setViewportSize({ width, height: 560 });
         desktop.state.outbox = Array.from({ length: queued }, (_, i) => ({
           id: `file-${i}`, deviceId: 'phone-1', name: `Queued file ${i + 1}.txt`, kind: 'file', size: 16,
         }));
@@ -163,7 +174,7 @@ for (const colorScheme of ['light', 'dark']) {
   test(`settings fills the workspace at minimum size in ${colorScheme} mode`, async ({ page, desktop }, testInfo) => {
     await page.emulateMedia({ colorScheme });
     await page.reload();
-    await page.setViewportSize({ width: 800, height: 520 });
+    await page.setViewportSize({ width: 800, height: 560 });
     await page.getByRole('button', { name: 'Send', exact: true }).click();
     await page.getByRole('combobox', { name: 'Send to' }).selectOption('phone-2');
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -196,6 +207,44 @@ for (const colorScheme of ['light', 'dark']) {
     await expect(panel).toBeHidden();
   });
 }
+
+test('the title bar drags the window and its buttons work, even over a dialog', async ({ page, desktop }) => {
+  await page.setViewportSize({ width: 800, height: 560 });
+  const drag = node => getComputedStyle(node).getPropertyValue('--wails-draggable').trim();
+  const titlebar = page.locator('.titlebar');
+  const controls = page.getByRole('group', { name: 'Window', exact: true });
+  expect(await titlebar.evaluate(drag)).toBe('drag');
+  expect(await controls.evaluate(drag)).toBe('no-drag');
+  expect(await controls.getByRole('button').evaluateAll(buttons => buttons.map(button => button.tabIndex))).toEqual([-1, -1, -1]);
+  // The page's own buttons must sit clear of the caption buttons above them.
+  const bar = await controls.boundingBox();
+  expect(bar.x + bar.width).toBe(800);
+  expect(bar.y).toBe(0);
+  for (const name of ['Send', 'Open inbox folder']) {
+    expect((await page.getByRole('button', { name, exact: true }).boundingBox()).y).toBeGreaterThanOrEqual(bar.height + 8);
+  }
+  await page.getByRole('heading', { name: 'Inbox', exact: true }).focus();
+  await controls.getByRole('button', { name: 'Minimize', exact: true }).click();
+  await controls.getByRole('button', { name: 'Maximize', exact: true }).click();
+  await expect(controls.getByRole('button', { name: 'Restore', exact: true })).toHaveAttribute('title', 'Restore');
+  await expect(page.getByRole('heading', { name: 'Inbox', exact: true })).toBeFocused();
+  await titlebar.dblclick({ position: { x: 300, y: 12 } });
+  await expect(controls.getByRole('button', { name: 'Maximize', exact: true })).toBeVisible();
+  expect(desktop.calls).toEqual([['WindowMinimise'], ['WindowToggleMaximise'], ['WindowToggleMaximise']]);
+  // A modal dialog makes the page inert, so the title bar has to follow the dialog.
+  desktop.state.pending = [{ id: 'incoming-1', kind: 'text', state: 'pending', name: 'Text', size: 8, source: 'iPhone', preview: 'Hello PC' }];
+  const dialog = page.getByRole('dialog', { name: 'Receive text?' });
+  await expect(dialog).toBeVisible();
+  expect(await titlebar.evaluate(drag)).toBe('drag');
+  expect(await titlebar.evaluate(node => node.getBoundingClientRect().toJSON())).toMatchObject({ x: 0, y: 0, width: 800, height: 44 });
+  await dialog.getByRole('button', { name: 'Close', exact: true }).click();
+  expect(desktop.calls).toContainEqual(['Quit']);
+  await dialog.getByRole('button', { name: 'Decline', exact: true }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page.locator('.desktop-shell > .titlebar')).toBeVisible();
+  await controls.getByRole('button', { name: 'Minimize', exact: true }).click();
+  expect(desktop.calls.filter(call => call[0] === 'WindowMinimise')).toHaveLength(2);
+});
 
 test('network controls track sidebar pause and paired phone actions remain available', async ({ page, desktop }) => {
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
@@ -242,7 +291,7 @@ for (const colorScheme of ['light', 'dark']) {
   test(`rename opens a focused dialog and supports cancellation in ${colorScheme} mode`, async ({ page, desktop }, testInfo) => {
     await page.emulateMedia({ colorScheme });
     await page.reload();
-    await page.setViewportSize({ width: 800, height: 520 });
+    await page.setViewportSize({ width: 800, height: 560 });
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     const button = page.getByRole('group', { name: 'iPhone', exact: true }).getByRole('button', { name: 'Rename', exact: true });
     await expect(page.getByRole('region', { name: 'Paired phones' }).getByRole('textbox')).toHaveCount(0);

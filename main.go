@@ -39,6 +39,9 @@ func main() {
 	err = wails.Run(&options.App{
 		Title: "Share Me", Width: 960, Height: 680,
 		MinWidth: 800, MinHeight: 560,
+		// The page draws its own title bar so it can match the app. Windows keeps the frame's
+		// shadow, rounded corners, snapping, and keyboard window commands.
+		Frameless:   true,
 		AssetServer: &assetserver.Options{Assets: assets},
 		OnStartup:   app.startup, OnShutdown: app.shutdown,
 		OnDomReady: app.domReady, OnBeforeClose: app.beforeClose,
