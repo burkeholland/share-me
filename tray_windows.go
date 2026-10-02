@@ -6,6 +6,7 @@ import (
 	"os"
 	"runtime"
 	"sync"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -143,6 +144,16 @@ var (
 
 	trayControllerMu sync.RWMutex
 	trayController   *WindowsTray
+
+	// How long and how often a refused icon add is retried. Tests shorten both.
+	trayAddTimeout    = 5 * time.Second
+	trayAddRetryDelay = 250 * time.Millisecond
+
+	// trayNotify sends one Shell_NotifyIcon message. Tests replace it.
+	trayNotify = func(message uintptr, data *trayNotifyIconData) bool {
+		ret, _, _ := trayShellNotifyIcon.Call(message, uintptr(unsafe.Pointer(data)))
+		return ret != 0
+	}
 )
 
 func StartWindowsTray(callbacks TrayCallbacks) (*WindowsTray, error) {
@@ -316,12 +327,20 @@ func (w *WindowsTray) addIcon() error {
 	data.CallbackMessage = trayWMCallback
 	data.Icon = w.icon
 	copy(data.Tip[:], windows.StringToUTF16("Share Me"))
-	if ret, _, _ := trayShellNotifyIcon.Call(trayNIMAdd, uintptr(unsafe.Pointer(&data))); ret == 0 {
-		return errors.New("add Share Me notification icon failed")
+	// Explorer refuses new icons while it is busy, most often right after sign-in when Share Me
+	// starts with Windows, so a refused add is retried for a few seconds.
+	deadline := time.Now().Add(trayAddTimeout)
+	for !trayNotify(trayNIMAdd, &data) {
+		// An add that timed out may still go through. Remove it so the next add starts clean.
+		trayNotify(trayNIMDelete, &data)
+		if time.Now().After(deadline) {
+			return errors.New("add Share Me notification icon failed")
+		}
+		time.Sleep(trayAddRetryDelay)
 	}
 	w.iconAdded = true
 	data.Version = trayVersion
-	if ret, _, _ := trayShellNotifyIcon.Call(trayNIMSetVersion, uintptr(unsafe.Pointer(&data))); ret == 0 {
+	if !trayNotify(trayNIMSetVersion, &data) {
 		return errors.Join(errors.New("set Share Me notification icon version failed"), w.deleteIcon())
 	}
 	return nil
@@ -332,7 +351,7 @@ func (w *WindowsTray) deleteIcon() error {
 		return nil
 	}
 	data := w.iconData()
-	if ret, _, _ := trayShellNotifyIcon.Call(trayNIMDelete, uintptr(unsafe.Pointer(&data))); ret == 0 {
+	if !trayNotify(trayNIMDelete, &data) {
 		return errors.New("delete Share Me notification icon failed")
 	}
 	w.iconAdded = false

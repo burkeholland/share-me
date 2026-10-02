@@ -75,7 +75,10 @@ func (e *Engine) filterOffer(ctx context.Context, sdp string) (string, error) {
 					}
 					mdnsNames[address] = struct{}{}
 				}
-				if resolver == nil && !mdnsUnavailable {
+				// A loopback engine exists only for tests, and nothing answers mDNS on the
+				// loopback interface. Binding the mDNS port there would only make Windows
+				// Firewall ask about every newly built test binary.
+				if resolver == nil && !mdnsUnavailable && !e.ip.IsLoopback() {
 					mdnsAddress, err := net.ResolveUDPAddr("udp4", mdns.DefaultAddressIPv4)
 					if err == nil {
 						var conn *net.UDPConn

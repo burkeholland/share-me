@@ -8,9 +8,10 @@
   "frontend:dev:serverUrl": "auto",
   "author": { "name": "Burke Holland" },
   "info": {
-    "companyName": "Share Me",
+    "companyName": "Burke Holland",
     "productName": "Share Me",
-    "productVersion": "0.3.0",
+    "productVersion": "1.0.1",
+    "copyright": "Copyright (c) 2026 Burke Holland",
     "comments": "Direct encrypted file and text transfers between Windows and paired phone browsers."
   }
 }

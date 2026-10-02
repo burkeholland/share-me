@@ -15,6 +15,8 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+var ErrReconnecting = errors.New("connection service is reconnecting")
+
 type signalSocket struct {
 	conn *websocket.Conn
 	mu   sync.Mutex
@@ -41,8 +43,8 @@ func (e *Engine) signalLoop() {
 		if e.ctx.Err() != nil {
 			return
 		}
-		e.setStatus(false, fmt.Sprintf("Signaling unavailable; reconnecting in %s", backoff))
-		e.report(fmt.Errorf("signaling connection failed: %w", err))
+		e.setStatus(false, fmt.Sprintf("Can't reach the connection service. Retrying in %s.", backoff))
+		e.report(fmt.Errorf("%w: %w", ErrReconnecting, err))
 		timer := time.NewTimer(backoff)
 		select {
 		case <-e.ctx.Done():
@@ -127,7 +129,7 @@ func (e *Engine) signalSession() error {
 	if kind != websocket.TextMessage || strictJSON(data, &ready, maxSignal) != nil || ready.Type != "host-ready" {
 		return errors.New("broker rejected host identity")
 	}
-	e.setStatus(true, "Signaling connected")
+	e.setStatus(true, "Connected to the connection service.")
 	_ = conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	conn.SetPongHandler(func(string) error {
 		return conn.SetReadDeadline(time.Now().Add(60 * time.Second))

@@ -59,7 +59,29 @@ for (const [value, label] of [['all', 'All'], ['file', 'Files'], ['text', 'Text'
 
 const inboxToolbar = el('div', { class: 'inbox-toolbar' }, tabs, count);
 const inboxSurface = el('section', { class: 'inbox-surface' }, list, empty);
-root.append(el('div', { class: 'desktop-shell minimal-desktop' },
+
+// The window has no system title bar. This strip across the top is its drag area and holds the
+// caption buttons, which like the system's never take focus. A right-click opens the window menu.
+function captionButton(label, glyph, onclick) {
+  return el('button', { tabindex: -1, title: label, 'aria-label': label, onclick, onmousedown: event => event.preventDefault() }, glyph);
+}
+const maximize = captionButton('Maximize', '\uE922', () => window.runtime?.WindowToggleMaximise?.());
+const titlebar = el('div', {
+  class: 'titlebar',
+  ondblclick: event => {
+    if (event.target === titlebar) window.runtime?.WindowToggleMaximise?.();
+  },
+  oncontextmenu: event => {
+    event.preventDefault();
+    window.go?.main?.App?.ShowWindowMenu?.();
+  },
+},
+  el('div', { class: 'window-controls', role: 'group', 'aria-label': 'Window' },
+    captionButton('Minimize', '\uE921', () => window.runtime?.WindowMinimise?.()),
+    maximize,
+    // Quit asks the app first, which hides to the tray when that option is on.
+    captionButton('Close', '\uE8BB', () => window.runtime?.Quit?.())));
+const shell = el('div', { class: 'desktop-shell minimal-desktop' },
   el('aside', { class: 'sidebar' },
     brand(),
     el('section', { class: 'pair-panel', 'aria-label': 'Open on your phone' }, qr,
@@ -71,7 +93,36 @@ root.append(el('div', { class: 'desktop-shell minimal-desktop' },
   el('main', { class: 'workspace' },
     el('header', { class: 'workspace-header' }, heading, el('div', { class: 'cluster' }, changeView, openFolder, closeSettingsButton)),
     banner, active,
-    inboxToolbar, inboxSurface, sendPanel, settingsPanel)));
+    inboxToolbar, inboxSurface, sendPanel, settingsPanel),
+  titlebar);
+root.append(shell);
+
+let windowStateQueued = false;
+let windowStateQuery = 0;
+window.addEventListener('resize', () => {
+  if (windowStateQueued) return;
+  windowStateQueued = true;
+  requestAnimationFrame(async () => {
+    windowStateQueued = false;
+    const query = ++windowStateQuery;
+    const maximised = await window.runtime?.WindowIsMaximised?.();
+    // A later resize has asked again. Its answer is the current one.
+    if (query !== windowStateQuery) return;
+    const label = maximised ? 'Restore' : 'Maximize';
+    maximize.textContent = label === 'Restore' ? '\uE923' : '\uE922';
+    maximize.title = label;
+    maximize.setAttribute('aria-label', label);
+  });
+});
+const markWindowFocus = () => document.documentElement.toggleAttribute('data-window-inactive', !document.hasFocus());
+window.addEventListener('focus', markWindowFocus);
+window.addEventListener('blur', markWindowFocus);
+
+// A modal dialog makes the rest of the page inert. The title bar moves into the open dialog so the
+// window can still be dragged, minimized, and closed, as it can with a system title bar.
+function placeTitlebar() {
+  ([...document.querySelectorAll('dialog[open]')].at(-1) ?? shell).append(titlebar);
+}
 
 function api() {
   if (!window.go?.main?.App) throw new Error('Open ShareMe.exe to use the desktop inbox.');
@@ -157,8 +208,9 @@ function renderStatus() {
   toggle.disabled = !state.networks?.length;
   openFolder.disabled = !status.inboxDir;
   const peerError = state.secure && status.running && !state.serviceConnected ? state.peerMessage : '';
-  banner.hidden = !error && !status.error && !peerError;
-  banner.textContent = error || status.error || peerError || '';
+  const messages = [error, status.error, peerError].filter(Boolean);
+  banner.hidden = !messages.length;
+  banner.textContent = messages.join('\n');
   const select = document.getElementById('network');
   if (select) select.disabled = status.running;
   renderSettings();
@@ -325,9 +377,13 @@ function renderItems() {
 function dialog(title, ...content) {
   const node = el('dialog', { 'aria-label': title },
     el('header', { class: 'dialog-heading' }, el('h2', {}, title)), ...content.filter(Boolean));
-  node.addEventListener('close', () => node.remove());
+  node.addEventListener('close', () => {
+    node.remove();
+    placeTitlebar();
+  });
   document.body.append(node);
   node.showModal();
+  placeTitlebar();
   return node;
 }
 

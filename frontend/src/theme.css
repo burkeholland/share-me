@@ -65,4 +65,5 @@ html[data-theme="dark"] {
   --space-10: 40px;
   --radius: .625rem;
   --radius-panel: 16px;
+  --titlebar: 44px;
 }

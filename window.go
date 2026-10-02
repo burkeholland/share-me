@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"time"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
@@ -68,14 +67,16 @@ func (a *App) domReady(ctx context.Context) {
 		log.Print(a.trayErr)
 	}
 	a.domLoaded = true
-	if a.prefsErr == nil && a.prefs.StartWithWindows {
-		executable, startupErr := os.Executable()
-		if startupErr == nil {
-			startupErr = refreshStartupRegistration(executable)
-		}
+	if a.prefsErr == nil {
+		wanted := a.prefs.StartWithWindows
+		var startupErr error
+		a.prefs, startupErr = syncStartup(a.dataDir, a.prefs)
 		if startupErr != nil {
-			a.settingsErr = startupErr.Error()
 			log.Printf("Windows startup: %v", startupErr)
+			// Startup that was never turned on leaves the user nothing to fix.
+			if wanted {
+				a.settingsErr = startupErr.Error()
+			}
 		}
 	}
 	show := a.shouldShowInitially()

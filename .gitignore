@@ -3,6 +3,7 @@ node_modules/
 build/bin/
 build/site-review/
 frontend/dist/
+frontend/wailsjs/
 frontend/package.json.md5
 test-results/
 playwright-report/
@@ -15,8 +16,6 @@ coverage/
 .dev.vars*
 *.pem
 *.key
-/shortcut-release.json
-/shortcuts/ShareMe-publisher.zip
 /inbox/
 /outbox/
 /settings.json

@@ -16,7 +16,7 @@ import (
 	"unicode/utf8"
 )
 
-const csp = "default-src 'self';script-src 'self' 'unsafe-inline';style-src 'self';img-src 'self' data:;connect-src 'self';frame-ancestors 'none';form-action 'self'"
+const csp = "default-src 'self';script-src 'self';style-src 'self';img-src 'self' data:;connect-src 'self';frame-ancestors 'none';form-action 'self'"
 
 type apiError struct {
 	status  int
@@ -165,6 +165,10 @@ func (s *Service) handler(run *serverRun) http.Handler {
 		case "/healthz":
 			if requireMethod(w, r, http.MethodGet) {
 				writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+			}
+		case "/theme-init.js":
+			if requireMethod(w, r, http.MethodGet) {
+				s.serveAsset(w, r, "theme-init.js")
 			}
 		case "/api/session":
 			if requireMethod(w, r, http.MethodGet) {

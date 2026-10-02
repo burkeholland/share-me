@@ -66,10 +66,19 @@ After approval, Windows generates and durably saves a separate device ID and
 32-byte device secret, consumes the invitation, and sends over the DTLS channel:
 `{"type":"paired","id":"<device ID>","name":"<name>","secret":"<base64url secret>"}`.
 The device secret is NOT derived from or sent through the invitation/signaling
-channel. The browser imports it as a non-extractable AES-GCM CryptoKey and stores
-it with the device and room IDs in IndexedDB, then replies `{"type":"paired-ack"}`.
+channel. The browser stores it with the device, room IDs, and name in IndexedDB,
+then replies `{"type":"paired-ack"}`.
 Only then is that peer authorized; Windows sends `{"type":"ready"}`.
 Declined pairing sends `{"type":"error","message":"Connection declined on PC"}`.
+
+After `ready`, the browser rewrites its address to
+`{origin}/#room={room}&device={device ID}&secret={base64url secret}` so a
+bookmark or an iOS Home Screen web app, which has separate storage, can
+reconnect. A page opened with those fragment values uses them directly and saves
+them again. The stored record and the fragment are bearer secrets that code from
+the hosted origin can read; they are never sent to the web server. Records saved
+by earlier builds hold a non-extractable AES-GCM CryptoKey instead and keep
+working.
 
 Returning browsers encrypt signaling using their device secret and device ID.
 Their control channel receives `{"type":"ready"}` after authentication. Pairing
@@ -155,9 +164,16 @@ func (*Engine) Devices() []Device
 func (*Engine) RenameDevice(id, name string) error
 func (*Engine) RevokeDevice(id string) error
 func (*Engine) Status() (connected bool, message string)
+var ErrReconnecting error // wraps a lost or failed broker session
 ```
 
 Device and PairRequest fields have lower-camel-case JSON tags.
+
+A broker session that fails or drops is reported to `OnError` wrapped in
+`ErrReconnecting` (test with `errors.Is`; the cause stays in the chain) while the
+engine retries with backoff. It stays visible through Status and the log, and the
+desktop does not raise a transfer error for it. `RenameDevice` and `RevokeDevice`
+keep working after Close, so phones can be managed while receiving is paused.
 
 Accepted listener connections implement `PeerID() string`. RemoteAddr is a
 parseable `net.TCPAddr` with the selected peer address. Start returns after setup;

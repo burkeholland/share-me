@@ -1,15 +1,16 @@
 {
   "name": "share-me",
-  "version": "0.3.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite --host 127.0.0.1",
     "build": "vite build",
-    "test": "playwright test"
+    "test": "playwright test",
+    "test:unit": "node --test unit/peer-http.test.mjs unit/theme.test.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",
-    "vite": "7.3.1"
+    "vite": "7.3.6"
   }
 }

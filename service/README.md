@@ -13,8 +13,14 @@ From `service\`, with Node.js 22 or newer:
 npm ci
 npm run check
 npm test
+npm audit
 npm run dev
 ```
+
+`package.json` overrides `undici@7.29.0` to `7.29.1` because the Miniflare
+release that Wrangler pins still requests the version with a published
+advisory. These are development tools only; nothing from them is deployed.
+Remove the override when Wrangler's Miniflare requests a fixed version.
 
 The frontend owner stages the phone application into `public\` (`index.html`,
 its scripts/styles, and service worker). These static assets contain no
