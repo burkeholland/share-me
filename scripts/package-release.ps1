@@ -37,7 +37,7 @@ try {
     }
     [IO.File]::WriteAllText((Join-Path $stage 'THIRD-PARTY-NOTICES.txt'), $notices, [Text.UTF8Encoding]::new($false))
     $readme = @"
-Share Me $version - Windows x64 preview
+Share Me $version - Windows x64
 
 Extract this ZIP into a folder and run ShareMe.exe. Keep the included notices.
 Requires Windows and the installed Microsoft Edge WebView2 Runtime.
@@ -52,10 +52,9 @@ Use
 Close hides the app in the system tray. Right-click the tray icon and choose
 Quit to stop receiving. Startup settings are off by default.
 
-Files and text are encrypted and transferred directly over the LAN. This preview
-still loads the phone page and establishes connections through Cloudflare.
-It is not the planned offline, local-HTTPS version. Internet access is required
-to connect. Physical-iPhone compatibility still needs final verification.
+Files and text are encrypted and transferred directly over the LAN. The phone
+page and connection setup go through Cloudflare, so internet access is required
+to connect. There is no cloud file relay. Keep Safari open during a transfer.
 
 Files are checked and scanned with Windows Defender before being saved.
 No scanner guarantees detection of every threat. Only accept files you expect.
@@ -68,7 +67,6 @@ Instructions: https://github.com/burkeholland/share-me#use
     $metadata = [ordered]@{
         version = $version
         platform = 'windows-x64'
-        preview = $true
         sourceCommit = $SourceCommit
         goVersion = $GoToolchain -replace '^go'
         executableBytes = (Get-Item -LiteralPath $stagedExecutable).Length

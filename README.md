@@ -4,7 +4,7 @@ Send files and text between Windows and an iPhone browser or Home Screen web app
 
 ## Use
 
-1. [Download the Windows x64 preview](https://github.com/burkeholland/share-me/releases/download/v0.3.0-preview.1/ShareMe-0.3.0-windows-x64.zip), extract the ZIP, and run `ShareMe.exe`. No build tools are required. The executable is unsigned; do not bypass Windows trust warnings. [Release notes and checksum](https://github.com/burkeholland/share-me/releases/tag/v0.3.0-preview.1).
+1. [Download Share Me 1.0.0 for Windows x64](https://github.com/burkeholland/share-me/releases/download/v1.0.0/ShareMe-1.0.0-windows-x64.zip), extract the ZIP, and run `ShareMe.exe`. No build tools are required. The executable is unsigned; do not bypass Windows trust warnings. [Release notes and checksum](https://github.com/burkeholland/share-me/releases/tag/v1.0.0).
 2. Scan its QR code with the iPhone Camera app.
 3. Click **Connect** on Windows to remember this phone's browser.
 4. On the phone, choose photos or files, or send text. Click **Accept** on Windows.
@@ -23,9 +23,9 @@ The phone shows **Waiting for PC approval** before sending any file contents. A 
 
 Incoming files are saved to `%USERPROFILE%\Downloads\Share Me`. The desktop shows the latest 100 transfers. Text stays in the inbox until you explicitly copy it; clipboard access happens only when you press a copy/send button.
 
-Keep both devices on the same trusted network and the PC awake. By default, **Close hides Share Me in the system tray; receiving continues.** Click its tray icon or open the executable again to bring the window back. Right-click the tray icon and choose **Quit** to stop receiving and exit. New transfer requests bring the approval window forward, even when hidden.
+Keep both devices on the same trusted network and the PC awake. By default, **Close hides Share Me in the system tray; receiving continues.** Click its tray icon or open the executable again to bring the window back. Right-click the tray icon and choose **Quit** to stop receiving and exit. New transfer requests bring the approval window forward, even when hidden. Share Me draws its own title bar: drag the top edge of the window to move it, or double-click it to maximize.
 
-**Settings** opens a full page, grouped into Window, Phones, Network, and Save to. Its top-right **X** or **Escape** returns to the previous transfer view. It includes **Start with Windows** (off by default), **Start minimized to tray** (off by default), **Close button hides to tray** (on by default), and **Minimize button hides to tray** (on by default). The Close and Minimize options are independent. There is also a **Minimize to tray** button in Settings. If the tray cannot be created, the window stays visible and Close exits normally.
+**Settings** opens a full page, grouped into Window, Phones, Network, and Save to. The **X** next to its heading or **Escape** returns to the previous transfer view. It includes **Start with Windows** (off by default), **Start minimized to tray** (off by default), **Close button hides to tray** (on by default), and **Minimize button hides to tray** (on by default). The Close and Minimize options are independent. There is also a **Minimize to tray** button in Settings. If the tray cannot be created, the window stays visible and Close exits normally.
 
 Startup applies only to the current Windows user and does not need administrator access. It uses the executable's current location, so keep the executable there; opening it from a new location updates an enabled startup entry. Turning startup off removes only Share Me's entry. Windows Startup apps can independently disable automatic launch. The Microsoft Store version uses a Windows startup task instead of a Run entry, and its **Start with Windows** switch follows **Windows Settings > Apps > Startup**. If startup was turned off there, turn it back on there.
 
@@ -55,7 +55,7 @@ Only host UDP candidates on the selected private IPv4 subnet are allowed. No HTT
 
 Limits: **2 GiB per file**, **64 KiB per text transfer**, **50 queued files** on the phone. Browser approval requests expire after two minutes without an answer. Keep Safari open during a transfer. A lost response can leave an uncertain result: check the PC inbox before retrying.
 
-The HTTPS bookmark stays the same when the PC's LAN address changes. Guest Wi-Fi isolation, VPNs, and firewalls may prevent a direct connection; there is deliberately no cloud file-relay fallback. Keep the phone page open and the PC awake. If the phone connection drops after suspension, use **Reconnect**. Safari on a physical iPhone still needs a final device-specific check; Windows Playwright WebKit supports the streaming save flow but does not implement WebRTC.
+The HTTPS bookmark stays the same when the PC's LAN address changes. Guest Wi-Fi isolation, VPNs, and firewalls may prevent a direct connection; there is deliberately no cloud file-relay fallback. Keep the phone page open and the PC awake. If the phone connection drops after suspension, use **Reconnect**. The automated tests cannot cover Safari on a physical iPhone: Windows Playwright WebKit supports the streaming save flow but does not implement WebRTC. Check a real iPhone before each release.
 
 Received history/text and outgoing snapshots are stored unencrypted under `%APPDATA%\ShareMe`; each paired browser's secret and the host key are protected on the PC with Windows DPAPI. On the phone, the browser keeps its reconnect secret in IndexedDB and, after pairing, in the fragment of the page address, where code from the Share Me origin can read it. Connections saved by earlier builds keep their non-extractable WebCrypto key. Existing photos, history, and desktop settings are preserved during upgrades. No automatic inbox deletion is performed. At startup, Share Me removes only its own leftovers from an interrupted transfer: unpublished `.shareme-upload-*` files in the inbox's `.shareme-quarantine` folder and `.shareme-state-*` files in the data folder. Outbox limits are **20 items / 10 GiB total**.
 
@@ -75,7 +75,7 @@ The build recognizes portable Go at `.tools\go\bin` and uses **Go 1.26.8** with 
 
 The build reads the publisher-owned HTTPS origin from `scripts\service-url.json`; `-ServiceURL https://your-service.workers.dev` overrides it. To publish your own service, build the frontend, run `node scripts\stage-hosted.mjs`, and follow `service\README.md`. The Worker uses the account's existing plan limits; no paid upgrade is required by the configuration.
 
-For a downloadable package, build with `-OutputName ShareMe-1.0.0-windows-x64.exe`, then run `scripts\package-release.ps1 -SourceCommit <40-character-application-source-commit>`. The script validates the production build and packages `ShareMe.exe`, instructions, build metadata, and licenses for Go and every linked module in a ZIP, with a separate SHA-256 checksum. It does not publish, commit, or push anything. Package outputs stay under ignored `build\bin`. Use a source commit matching the built application, and update the landing page's release metadata and measured archive size when publishing a new version.
+For a downloadable package, build with `-OutputName ShareMe-1.0.0-windows-x64.exe`, then run `scripts\package-release.ps1 -SourceCommit <40-character-application-source-commit>`. To package an executable that is already built, such as the one in the MSIX, add `-Executable build\bin\ShareMe.exe`. The script validates the production build and packages `ShareMe.exe`, instructions, build metadata, and licenses for Go and every linked module in a ZIP, with a separate SHA-256 checksum. It does not publish, commit, or push anything. Package outputs stay under ignored `build\bin`. Use a source commit matching the built application, and update the landing page's release metadata and measured archive size when publishing a new version.
 
 ### Microsoft Store package (MSIX)
 
@@ -94,7 +94,7 @@ For a Store upload, copy the values from Partner Center's **Product identity** p
 
 ## Landing page
 
-The standalone `site` directory follows the compact layout of [Mirror Me](https://burkeholland.github.io/mirror-me/): app screenshots, setup, and source links. It is separate from the Cloudflare phone application and never opens a receiver or connects to a paired phone. Download links to the published Windows preview. `site\assets\release.json` records the published archive's URL, size, checksum, and application-source commit.
+The standalone `site` directory follows the compact layout of [Mirror Me](https://burkeholland.github.io/mirror-me/): app screenshots, setup, and source links. It is separate from the Cloudflare phone application and never opens a receiver or connects to a paired phone. Download links to the published Windows release. `site\assets\release.json` records the published archive's URL, size, checksum, and application-source commit.
 
 Preview and check it from the repository root, using the existing frontend Playwright dependencies:
 
