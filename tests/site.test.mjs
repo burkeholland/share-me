@@ -38,7 +38,7 @@ test('page copy describes the application without slogans', () => {
   assert.doesNotMatch(html, /Your iPhone files|Scan\. Send\. Accept\.|That's the setup|take the direct route|It goes both ways|without the extra app/i);
 });
 
-test('download points to the published Windows preview', () => {
+test('download points to the published Windows release', () => {
   assert.equal(release.downloadURL, `https://github.com/burkeholland/share-me/releases/download/${release.tag}/${release.fileName}`);
   assert.equal(release.releaseURL, `https://github.com/burkeholland/share-me/releases/tag/${release.tag}`);
   assert.ok(html.includes(`href="${release.downloadURL}">Download<svg`));
@@ -46,7 +46,7 @@ test('download points to the published Windows preview', () => {
   assert.match(release.sha256, /^[a-f0-9]{64}$/);
   assert.match(release.sourceCommit, /^[a-f0-9]{40}$/);
   assert.ok(release.bytes > 0 && release.executableBytes > release.bytes);
-  assert.match(html, /Unsigned preview/);
+  assert.match(html, /Unsigned ZIP/);
   assert.doesNotMatch(html, /Build for Windows|Windows download not published yet/);
   assert.ok(html.includes('<a href="https://github.com/burkeholland/share-me/blob/main/PRIVACY.md">Privacy</a>'));
 });
