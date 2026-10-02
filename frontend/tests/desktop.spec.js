@@ -40,7 +40,7 @@ const test = base.extend({
     await page.addInitScript(() => {
       const App = { GetState: () => window.desktopState() };
       for (const method of ['Pause', 'Start', 'RenamePhone', 'RevokePhone', 'Decide', 'DecidePair',
-        'SetDesktopSettings', 'MinimizeToTray', 'SendFiles', 'SendClipboardText', 'CopyLink', 'OpenInbox']) {
+        'SetDesktopSettings', 'MinimizeToTray', 'SendFiles', 'SendClipboardText', 'CopyLink', 'OpenInbox', 'ShowWindowMenu']) {
         App[method] = (...args) => window.desktopAction(method, args);
       }
       window.go = { main: { App } };
@@ -208,7 +208,9 @@ for (const colorScheme of ['light', 'dark']) {
   });
 }
 
-test('the title bar drags the window and its buttons work, even over a dialog', async ({ page, desktop }) => {
+// Windows moves the window, so this covers what the page owes Wails and the user: the drag
+// marking, the caption buttons, the window menu request, and following a dialog.
+test('the title bar marks its drag area and its buttons and menu work, even over a dialog', async ({ page, desktop }) => {
   await page.setViewportSize({ width: 800, height: 560 });
   const drag = node => getComputedStyle(node).getPropertyValue('--wails-draggable').trim();
   const titlebar = page.locator('.titlebar');
@@ -231,6 +233,25 @@ test('the title bar drags the window and its buttons work, even over a dialog', 
   await titlebar.dblclick({ position: { x: 300, y: 12 } });
   await expect(controls.getByRole('button', { name: 'Maximize', exact: true })).toBeVisible();
   expect(desktop.calls).toEqual([['WindowMinimise'], ['WindowToggleMaximise'], ['WindowToggleMaximise']]);
+  // A right-click asks Windows for the window menu instead of showing the browser's.
+  expect(await titlebar.evaluate(node => node.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true })))).toBe(false);
+  await controls.getByRole('button', { name: 'Minimize', exact: true }).click({ button: 'right' });
+  expect(desktop.calls.slice(3)).toEqual([['ShowWindowMenu'], ['ShowWindowMenu']]);
+  // Forced colors replace the hover tints, so a hovered caption button shows the system highlight.
+  await page.emulateMedia({ forcedColors: 'active' });
+  const highlight = await page.evaluate(() => {
+    const probe = document.body.appendChild(document.createElement('div'));
+    probe.style.cssText = 'forced-color-adjust: none; background: Highlight';
+    const color = getComputedStyle(probe).backgroundColor;
+    probe.remove();
+    return color;
+  });
+  for (const name of ['Minimize', 'Close']) {
+    const button = controls.getByRole('button', { name, exact: true });
+    await button.hover();
+    await expect(button).toHaveCSS('background-color', highlight);
+  }
+  await page.emulateMedia({ forcedColors: 'none' });
   // A modal dialog makes the page inert, so the title bar has to follow the dialog.
   desktop.state.pending = [{ id: 'incoming-1', kind: 'text', state: 'pending', name: 'Text', size: 8, source: 'iPhone', preview: 'Hello PC' }];
   const dialog = page.getByRole('dialog', { name: 'Receive text?' });
@@ -244,6 +265,29 @@ test('the title bar drags the window and its buttons work, even over a dialog', 
   await expect(page.locator('.desktop-shell > .titlebar')).toBeVisible();
   await controls.getByRole('button', { name: 'Minimize', exact: true }).click();
   expect(desktop.calls.filter(call => call[0] === 'WindowMinimise')).toHaveLength(2);
+});
+
+test('the Maximize button ignores a late answer about an earlier window size', async ({ page, desktop }) => {
+  const button = page.getByRole('group', { name: 'Window', exact: true }).getByRole('button').nth(1);
+  const resizeAndCount = () => page.evaluate(async () => {
+    window.dispatchEvent(new Event('resize'));
+    await new Promise(requestAnimationFrame);
+    await new Promise(requestAnimationFrame);
+    return window.answers.length;
+  });
+  await page.evaluate(() => {
+    window.answers = [];
+    window.runtime.WindowIsMaximised = () => new Promise(resolve => window.answers.push(resolve));
+  });
+  expect(await resizeAndCount()).toBe(1);
+  expect(await resizeAndCount()).toBe(2);
+  await page.evaluate(() => window.answers[1](true));
+  await expect(button).toHaveAccessibleName('Restore');
+  await page.evaluate(async () => {
+    window.answers[0](false);
+    await new Promise(requestAnimationFrame);
+  });
+  await expect(button).toHaveAccessibleName('Restore');
 });
 
 test('network controls track sidebar pause and paired phone actions remain available', async ({ page, desktop }) => {
@@ -268,21 +312,27 @@ test('network controls track sidebar pause and paired phone actions remain avail
 });
 
 test('approval dialogs preserve a rename draft and add phones without leaving Settings', async ({ page, desktop }) => {
+  // The title bar belongs to the dialog on top, and returns to the page when the last one closes.
+  const barIn = name => page.getByRole('dialog', { name }).locator('> .titlebar');
   await page.getByRole('button', { name: 'Settings', exact: true }).click();
   await page.getByRole('group', { name: 'iPhone', exact: true }).getByRole('button', { name: 'Rename', exact: true }).click();
   await page.getByRole('textbox', { name: 'Phone name' }).fill('Unfinished rename');
   desktop.state.pending = [{ id: 'incoming-1', kind: 'text', state: 'pending', name: 'Text', size: 8, source: 'iPhone', preview: 'Hello PC' }];
   await expect(page.getByRole('dialog', { name: 'Receive text?' })).toBeVisible();
+  await expect(barIn('Receive text?')).toHaveCount(1);
   await page.keyboard.press('Escape');
   await expect(page.getByRole('dialog', { name: 'Receive text?' })).toHaveCount(0);
   expect(desktop.calls).toContainEqual(['Decide', 'incoming-1', false]);
   await expect(page.getByRole('dialog', { name: 'Rename phone' })).toBeVisible();
+  await expect(barIn('Rename phone')).toHaveCount(1);
   desktop.state.pairRequests = [{ id: 'new-phone', name: 'New phone', source: '192.168.1.4' }];
   await expect(page.getByRole('dialog', { name: 'Connect phone?' })).toBeVisible();
+  await expect(barIn('Connect phone?')).toHaveCount(1);
   await page.getByRole('button', { name: 'Connect', exact: true }).click();
   await expect(page.getByRole('dialog', { name: 'Connect phone?' })).toHaveCount(0);
   await expect(page.getByRole('textbox', { name: 'Phone name' })).toHaveValue('Unfinished rename');
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+  await expect(page.locator('.desktop-shell > .titlebar')).toHaveCount(1);
   await expect(page.getByRole('group', { name: 'New phone', exact: true })).toBeVisible();
   await expect(page.getByRole('heading', { name: 'Settings', exact: true })).toBeVisible();
 });

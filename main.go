@@ -53,7 +53,7 @@ func main() {
 		},
 		Windows: &windows.Options{
 			Theme:           windows.SystemDefault,
-			WindowClassName: "ShareMeWindow",
+			WindowClassName: windowClassName,
 		},
 	})
 	if err != nil {

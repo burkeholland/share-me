@@ -14,11 +14,11 @@
   "sources": {
     "frontend/index.html": "a3219c07ded6e02b062df7d7f24ace9395db4845d330e03cfb2cb1c0c24212ee",
     "frontend/phone.html": "631b5a7e82d410798d94b06e61d1882b348c4cfe016b57bb9a16e619363018bd",
-    "frontend/src/desktop.js": "1139456ed42437f193263c758c589f4823217f26dae4d25cfd170248198c19f8",
+    "frontend/src/desktop.js": "fe5961e7dce0e2c79054baf8a7b095c1b587329a1d847c0b1a8ec821a6f9e2bc",
     "frontend/src/phone.js": "485598245534f731be3e2059f9e56711d8d8451a05ad5aea38b8e73e40a31e04",
     "frontend/src/shared.js": "e14a1901101a23263e81f1699cd91d9ef5bae0ca1fc97d812bc034b653bd4376",
     "frontend/src/theme.css": "550886b16e0d14205a2853840d90abce4032ed8c83b6355397c0a51b502c4525",
-    "frontend/src/style.css": "078666ea680f766de9fc78c80dd0949156ab1a39240cf979d84ff3e4cefe78bc",
+    "frontend/src/style.css": "ffa714603f095f078a8d7756b090546b68dd12e5e7cbf7ca9141051a51925a85",
     "frontend/public/theme-init.js": "50924d7545cb02e9ac28c27be1e58ee171e9a4b448c397d52109539061985317",
     "frontend/vite.config.js": "7ec5131c89a4f3cfbc5f81cb679be0033d2d15a1aced308dc8371c6c1834dab3",
     "site/tests/capture.mjs": "0152069d319ac8b55210e7a2b6a07e2f152b0b9f82f4e9fa781cc660827fda09",

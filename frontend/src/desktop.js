@@ -61,14 +61,21 @@ const inboxToolbar = el('div', { class: 'inbox-toolbar' }, tabs, count);
 const inboxSurface = el('section', { class: 'inbox-surface' }, list, empty);
 
 // The window has no system title bar. This strip across the top is its drag area and holds the
-// caption buttons, which like the system's never take focus.
+// caption buttons, which like the system's never take focus. A right-click opens the window menu.
 function captionButton(label, glyph, onclick) {
   return el('button', { tabindex: -1, title: label, 'aria-label': label, onclick, onmousedown: event => event.preventDefault() }, glyph);
 }
 const maximize = captionButton('Maximize', '\uE922', () => window.runtime?.WindowToggleMaximise?.());
-const titlebar = el('div', { class: 'titlebar', ondblclick: event => {
-  if (event.target === titlebar) window.runtime?.WindowToggleMaximise?.();
-} },
+const titlebar = el('div', {
+  class: 'titlebar',
+  ondblclick: event => {
+    if (event.target === titlebar) window.runtime?.WindowToggleMaximise?.();
+  },
+  oncontextmenu: event => {
+    event.preventDefault();
+    window.go?.main?.App?.ShowWindowMenu?.();
+  },
+},
   el('div', { class: 'window-controls', role: 'group', 'aria-label': 'Window' },
     captionButton('Minimize', '\uE921', () => window.runtime?.WindowMinimise?.()),
     maximize,
@@ -91,12 +98,17 @@ const shell = el('div', { class: 'desktop-shell minimal-desktop' },
 root.append(shell);
 
 let windowStateQueued = false;
+let windowStateQuery = 0;
 window.addEventListener('resize', () => {
   if (windowStateQueued) return;
   windowStateQueued = true;
   requestAnimationFrame(async () => {
     windowStateQueued = false;
-    const label = await window.runtime?.WindowIsMaximised?.() ? 'Restore' : 'Maximize';
+    const query = ++windowStateQuery;
+    const maximised = await window.runtime?.WindowIsMaximised?.();
+    // A later resize has asked again. Its answer is the current one.
+    if (query !== windowStateQuery) return;
+    const label = maximised ? 'Restore' : 'Maximize';
     maximize.textContent = label === 'Restore' ? '\uE923' : '\uE922';
     maximize.title = label;
     maximize.setAttribute('aria-label', label);

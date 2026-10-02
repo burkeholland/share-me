@@ -143,5 +143,8 @@ dialog pre { background: var(--cp-surface); border: 1px solid var(--cp-border); 
 @media (forced-colors: active) {
   .select-control select { appearance: auto; }
   .select-control svg { display: none; }
+  /* Forced colors drop the hover tints, so the caption buttons use the system highlight pair. */
+  .window-controls button:hover:not(:disabled),
+  .window-controls button:last-child:hover:not(:disabled) { forced-color-adjust: none; background: Highlight; color: HighlightText; }
 }
 @media (prefers-reduced-motion: no-preference) { button { transition: background .12s, border-color .12s; } }
