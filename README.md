@@ -4,7 +4,7 @@ Send files and text between Windows and an iPhone browser or Home Screen web app
 
 ## Use
 
-1. [Download Share Me 1.0.0 for Windows x64](https://github.com/burkeholland/share-me/releases/download/v1.0.0/ShareMe-1.0.0-windows-x64.zip), extract the ZIP, and run `ShareMe.exe`. No build tools are required. The executable is unsigned; do not bypass Windows trust warnings. [Release notes and checksum](https://github.com/burkeholland/share-me/releases/tag/v1.0.0).
+1. [Download Share Me 1.0.1 for Windows x64](https://github.com/burkeholland/share-me/releases/download/v1.0.1/ShareMe-1.0.1-windows-x64.zip), extract the ZIP, and run `ShareMe.exe`. No build tools are required. The executable is unsigned; do not bypass Windows trust warnings. [Release notes and checksum](https://github.com/burkeholland/share-me/releases/tag/v1.0.1).
 2. Scan its QR code with the iPhone Camera app.
 3. Click **Connect** on Windows to remember this phone's browser.
 4. On the phone, choose photos or files, or send text. Click **Accept** on Windows.
@@ -75,11 +75,11 @@ The build recognizes portable Go at `.tools\go\bin` and uses **Go 1.26.8** with 
 
 The build reads the publisher-owned HTTPS origin from `scripts\service-url.json`; `-ServiceURL https://your-service.workers.dev` overrides it. To publish your own service, build the frontend, run `node scripts\stage-hosted.mjs`, and follow `service\README.md`. The Worker uses the account's existing plan limits; no paid upgrade is required by the configuration.
 
-For a downloadable package, build with `-OutputName ShareMe-1.0.0-windows-x64.exe`, then run `scripts\package-release.ps1 -SourceCommit <40-character-application-source-commit>`. To package an executable that is already built, such as the one in the MSIX, add `-Executable build\bin\ShareMe.exe`. The script validates the production build and packages `ShareMe.exe`, instructions, build metadata, and licenses for Go and every linked module in a ZIP, with a separate SHA-256 checksum. It does not publish, commit, or push anything. Package outputs stay under ignored `build\bin`. Use a source commit matching the built application, and update the landing page's release metadata and measured archive size when publishing a new version.
+For a downloadable package, build with `-OutputName ShareMe-1.0.1-windows-x64.exe`, then run `scripts\package-release.ps1 -SourceCommit <40-character-application-source-commit>`. To package an executable that is already built, such as the one in the MSIX, add `-Executable build\bin\ShareMe.exe`. The script validates the production build and packages `ShareMe.exe`, instructions, build metadata, and licenses for Go and every linked module in a ZIP, with a separate SHA-256 checksum. It does not publish, commit, or push anything. Package outputs stay under ignored `build\bin`. Use a source commit matching the built application, and update the landing page's release metadata and measured archive size when publishing a new version.
 
 ### Microsoft Store package (MSIX)
 
-After `scripts\build.ps1`, `scripts\package-msix.ps1` packages `build\bin\ShareMe.exe` as `build\bin\ShareMe-1.0.0-windows-x64-development.msix`, an unsigned package with a local development identity. It needs PowerShell 7.2 and the Windows 11 SDK (`makeappx.exe`, `makepri.exe`). The script unpacks the result, compares every file with what it staged, and writes a JSON receipt with the identity and SHA-256 hashes next to the package. The package carries `PRIVACY.md` and the third-party notices.
+After `scripts\build.ps1`, `scripts\package-msix.ps1` packages `build\bin\ShareMe.exe` as `build\bin\ShareMe-1.0.1-windows-x64-development.msix`, an unsigned package with a local development identity. It needs PowerShell 7.2 and the Windows 11 SDK (`makeappx.exe`, `makepri.exe`). The script unpacks the result, compares every file with what it staged, and writes a JSON receipt with the identity and SHA-256 hashes next to the package. The package carries `PRIVACY.md` and the third-party notices.
 
 To run the app under package identity, turn on Windows Developer Mode and register the unpacked copy the script verified. Remove it before packaging again, because packaging replaces that folder.
 
