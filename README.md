@@ -4,7 +4,7 @@ Send files and text between Windows and an iPhone browser or Home Screen web app
 
 ## Use
 
-1. [Download Share Me 1.0.1 for Windows x64](https://github.com/burkeholland/share-me/releases/download/v1.0.1/ShareMe-1.0.1-windows-x64.zip), extract the ZIP, and run `ShareMe.exe`. No build tools are required. The executable is unsigned; do not bypass Windows trust warnings. [Release notes and checksum](https://github.com/burkeholland/share-me/releases/tag/v1.0.1).
+1. Get [Share Me File Transfer from the Microsoft Store](https://apps.microsoft.com/detail/9NNRDQSDZBR0). It is free, signed by Microsoft, and updates automatically. Or [download Share Me 1.0.1 for Windows x64](https://github.com/burkeholland/share-me/releases/download/v1.0.1/ShareMe-1.0.1-windows-x64.zip), extract the ZIP, and run `ShareMe.exe`. No build tools are required. The ZIP executable is unsigned; do not bypass Windows trust warnings. [Release notes and checksum](https://github.com/burkeholland/share-me/releases/tag/v1.0.1).
 2. Scan its QR code with the iPhone Camera app.
 3. Click **Connect** on Windows to remember this phone's browser.
 4. On the phone, choose photos or files, or send text. Click **Accept** on Windows.
@@ -94,7 +94,7 @@ For a Store upload, copy the values from Partner Center's **Product identity** p
 
 ## Landing page
 
-The standalone `site` directory follows the compact layout of [Mirror Me](https://burkeholland.github.io/mirror-me/): app screenshots, setup, and source links. It is separate from the Cloudflare phone application and never opens a receiver or connects to a paired phone. Download links to the published Windows release. `site\assets\release.json` records the published archive's URL, size, checksum, and application-source commit.
+The standalone `site` directory follows the compact layout of [Mirror Me](https://burkeholland.github.io/mirror-me/): app screenshots, setup, and source links. It is separate from the Cloudflare phone application and never opens a receiver or connects to a paired phone. It links to the Microsoft Store listing, and Download links to the published Windows release. `site\assets\release.json` records the published archive's URL, size, checksum, and application-source commit.
 
 Preview and check it from the repository root, using the existing frontend Playwright dependencies:
 
