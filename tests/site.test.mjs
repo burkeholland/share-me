@@ -51,6 +51,13 @@ test('download points to the published Windows release', () => {
   assert.ok(html.includes('<a href="https://github.com/burkeholland/share-me/blob/main/PRIVACY.md">Privacy</a>'));
 });
 
+test('the Microsoft Store button points to the published listing', () => {
+  assert.ok(html.includes('href="https://apps.microsoft.com/detail/9NNRDQSDZBR0">Microsoft Store<svg'));
+  assert.equal((html.match(/apps\.microsoft\.com\/detail\//g) || []).length, 1);
+  assert.match(html, /Microsoft Store: free, updates automatically/);
+  assert.match(html, /Install it from the Microsoft Store, or run <code>ShareMe\.exe<\/code> from the ZIP\./);
+});
+
 test('local stylesheet and image assets exist and images have matching dimensions', async () => {
   for (const [, src] of html.matchAll(/(?:src|href)="(\.\/[^"#]+)"/g)) {
     if (src === './') continue;
