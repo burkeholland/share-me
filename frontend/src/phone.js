@@ -212,6 +212,31 @@ async function refreshOffers() {
               catch { toast('Select the text and use Copy.', true); }
             } }, icon('copy', 16), 'Copy');
             output.replaceChildren(el('pre', {}, result.text), copy);
+          } else if (result.file) {
+            const available = window.shareMePeer.canShareImage(result.file);
+            const save = el('button', { class: 'primary', onclick: async () => {
+              feedback.textContent = 'Opening share sheet...';
+              try {
+                await window.shareMePeer.shareImage(result.file);
+                feedback.textContent = 'Share sheet closed';
+              } catch (error) {
+                if (error.name === 'AbortError') feedback.textContent = 'Share cancelled';
+                else {
+                  feedback.textContent = 'Not saved';
+                  toast(errorMessage(error), true);
+                }
+              }
+            } }, icon('photo', 17), 'Save to Photos');
+            const download = el('button', { onclick: () => {
+              window.shareMePeer.downloadFile(result.file);
+              feedback.textContent = 'Download started';
+            } }, 'Download instead');
+            feedback.textContent = available ? 'Ready to save' : 'Share sheet unavailable';
+            output.replaceChildren(
+              el('p', { class: `notice${available ? '' : ' error'}` },
+                available ? 'Opens the iPhone share sheet. Choose Save Image.' :
+                  'Saving to Photos is unavailable here. Use Download instead.'),
+              el('div', { class: 'cluster space-top' }, save, download));
           }
         } catch (error) {
           feedback.textContent = 'Not received';
@@ -219,7 +244,7 @@ async function refreshOffers() {
         } finally { accept.disabled = false; }
       });
       return el('article', { class: 'receive-card' },
-        el('div', { class: 'cluster' }, icon(item.kind === 'text' ? 'text' : 'file', 22),
+        el('div', { class: 'cluster' }, icon(item.kind === 'text' ? 'text' : item.mime?.startsWith('image/') ? 'photo' : 'file', 22),
           el('div', { class: 'transfer-content' }, el('strong', { class: 'transfer-name' }, item.name), el('span', { class: 'meta' }, bytes(item.size)))),
         accept, feedback, output);
     }));
