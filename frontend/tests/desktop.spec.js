@@ -40,7 +40,7 @@ const test = base.extend({
     await page.addInitScript(() => {
       const App = { GetState: () => window.desktopState() };
       for (const method of ['Pause', 'Start', 'RenamePhone', 'RevokePhone', 'Decide', 'DecidePair',
-        'SetDesktopSettings', 'MinimizeToTray', 'SendFiles', 'SendClipboardText', 'CopyLink', 'OpenInbox', 'ShowWindowMenu']) {
+        'SetDesktopSettings', 'MinimizeToTray', 'SendFiles', 'SendClipboard', 'CopyLink', 'OpenInbox', 'ShowWindowMenu']) {
         App[method] = (...args) => window.desktopAction(method, args);
       }
       window.go = { main: { App } };
@@ -167,6 +167,8 @@ test('hosting URL is hidden, copy link remains, and recipient arrow is inset and
   await expect(recipient).toHaveValue('phone-2');
   await page.getByRole('button', { name: 'Choose files', exact: true }).click();
   expect(desktop.calls).toContainEqual(['SendFiles', 'phone-2']);
+  await page.getByRole('button', { name: 'Send clipboard', exact: true }).click();
+  expect(desktop.calls).toContainEqual(['SendClipboard', 'phone-2']);
   await page.screenshot({ path: testInfo.outputPath('desktop-send.png') });
 });
 

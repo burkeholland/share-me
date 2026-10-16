@@ -104,9 +104,16 @@ func (s *Service) serveOutbox(w http.ResponseWriter, r *http.Request, id string)
 	}
 	defer file.Close()
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": item.Name}))
-	w.Header().Set("Content-Type", "application/octet-stream")
-	if item.Kind == "text" {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+	contentType := item.MIME
+	if contentType == "" {
+		contentType = "application/octet-stream"
+		if item.Kind == "text" {
+			contentType = "text/plain"
+		}
 	}
+	if item.Kind == "text" && contentType == "text/plain" {
+		contentType += "; charset=utf-8"
+	}
+	w.Header().Set("Content-Type", contentType)
 	http.ServeContent(w, r, item.Name, item.CreatedAt, file)
 }

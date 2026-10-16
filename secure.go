@@ -4,9 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+	"shareme/internal/outbox"
 	"shareme/internal/peer"
 )
 
@@ -175,24 +175,59 @@ func (a *App) SendFiles(id string) error {
 	return nil
 }
 
-func (a *App) SendClipboardText(id string) error {
+func (a *App) SendClipboard(id string) error {
 	a.mu.Lock()
-	defer a.mu.Unlock()
 	if _, err := a.selectedPhone(id); err != nil {
+		a.mu.Unlock()
 		return err
 	}
-	if a.ctx == nil || a.workCtx == nil || a.outbox == nil {
+	ctx, workCtx, store := a.ctx, a.workCtx, a.outbox
+	a.mu.Unlock()
+	if ctx == nil || workCtx == nil || store == nil {
 		return errors.New("Share Me is not ready to send")
 	}
-	text, err := wailsruntime.ClipboardGetText(a.ctx)
+	payload, err := readClipboardPayload(ctx)
 	if err != nil {
-		return fmt.Errorf("read clipboard text: %w", err)
+		return err
 	}
-	if strings.TrimSpace(text) == "" {
-		return errors.New("the clipboard contains no text")
+	queue := func(add func() (outbox.Item, error)) error {
+		a.mu.Lock()
+		_, selectedErr := a.selectedPhone(id)
+		a.mu.Unlock()
+		if selectedErr != nil {
+			return selectedErr
+		}
+		item, addErr := add()
+		if addErr != nil {
+			return addErr
+		}
+		a.mu.Lock()
+		_, selectedErr = a.selectedPhone(id)
+		a.mu.Unlock()
+		if selectedErr != nil {
+			return errors.Join(selectedErr, store.Remove(item.ID))
+		}
+		a.notifyTransfers()
+		return nil
 	}
-	_, err = a.outbox.AddText(a.workCtx, id, text)
-	return err
+	if len(payload.Files) > 0 {
+		for index, path := range payload.Files {
+			if err := queue(func() (outbox.Item, error) { return store.AddFile(workCtx, id, path) }); err != nil {
+				return fmt.Errorf("%d clipboard files queued; could not prepare the next file: %w", index, err)
+			}
+		}
+		return nil
+	}
+	if len(payload.Data) > 0 {
+		return queue(func() (outbox.Item, error) {
+			return store.AddData(workCtx, id, payload.Name, payload.MIME, payload.Data)
+		})
+	}
+	return queue(func() (outbox.Item, error) { return store.AddText(workCtx, id, payload.Text) })
+}
+
+func (a *App) SendClipboardText(id string) error {
+	return a.SendClipboard(id)
 }
 
 func (a *App) RemoveOutgoing(id string) error {

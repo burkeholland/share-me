@@ -23,8 +23,11 @@ change it. A compatibility mode for developers, which you turn on yourself by
 editing `settings.json` as the README describes, uses unencrypted HTTP on your
 local network instead. Use that mode only on a network you trust.
 
-Share Me reads the Windows clipboard only when you select **Send clipboard
-text**, and writes to it only when you select a copy button.
+Share Me reads the Windows clipboard only when you select **Send clipboard**.
+The phone page asks its browser for clipboard text or images only when you
+select **Paste from clipboard**. The browser decides which formats it exposes
+and whether permission is required. Share Me writes to a clipboard only when
+you select a copy button.
 
 ## The connection service
 

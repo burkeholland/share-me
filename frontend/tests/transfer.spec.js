@@ -97,6 +97,64 @@ test('permanent URL opens immediately and sends text with Windows approval', asy
   await expect(page.getByRole('button', { name: 'Connect to PC' })).toHaveCount(0);
 });
 
+test('explicit clipboard action sends a browser-readable image with its filename and MIME type', async ({ page, receiver }) => {
+  await page.addInitScript(() => {
+    const encoded = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jWZkAAAAASUVORK5CYII=';
+    const bytes = Uint8Array.from(atob(encoded), character => character.charCodeAt(0));
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        read: async () => [{
+          types: ['image/png'],
+          getType: async type => new Blob([bytes], { type }),
+        }],
+      },
+    });
+  });
+  await openPhone(page, receiver);
+  await page.getByRole('button', { name: 'Paste from clipboard', exact: true }).click();
+  await expect(page.getByText('Received', { exact: true })).toBeVisible();
+  const files = await receivedFiles(receiver);
+  expect(files).toHaveLength(1);
+  expect(files[0]).toMatch(/Clipboard image\.png$/);
+  const saved = await readFile(join(receiver.inboxDir, files[0]));
+  expect(saved.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
+  const metadata = await Promise.all((await readdir(receiver.dir)).filter(name => name.endsWith('.json')).map(name => readFile(join(receiver.dir, name), 'utf8')));
+  expect(metadata.some(value => value.includes('"mime":"image/png"'))).toBeTruthy();
+  expect(receiver.proposals.get([...receiver.proposals.keys()][0]).name).toBe('Clipboard image.png');
+});
+
+test('clipboard permission denial explains the browser limitation without proposing a transfer', async ({ page, receiver }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { read: async () => { throw new DOMException('Denied', 'NotAllowedError'); } },
+    });
+  });
+  await openPhone(page, receiver);
+  await page.getByRole('button', { name: 'Paste from clipboard', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('Clipboard access was denied');
+  expect(receiver.proposals.size).toBe(0);
+});
+
+test('unsupported clipboard content produces a clear message without proposing a transfer', async ({ page, receiver }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        read: async () => [{
+          types: ['application/pdf'],
+          getType: async type => new Blob(['not transferred'], { type }),
+        }],
+      },
+    });
+  });
+  await openPhone(page, receiver);
+  await page.getByRole('button', { name: 'Paste from clipboard', exact: true }).click();
+  await expect(page.getByRole('alert')).toContainText('clipboard format is not supported');
+  expect(receiver.proposals.size).toBe(0);
+});
+
 test('same-name files are approved separately, scanned, and saved without overwrite', async ({ page, receiver }) => {
   await openPhone(page, receiver);
   await page.getByLabel('Choose files', { exact: true }).setInputFiles([

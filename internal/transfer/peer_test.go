@@ -62,4 +62,12 @@ func TestOutboxRoutesRequireAuthenticatedConnectionIdentity(t *testing.T) {
 		!strings.HasPrefix(partial.Header().Get("Content-Disposition"), "attachment;") {
 		t.Fatal("attachment retry/range support failed")
 	}
+	image, err := store.AddData(context.Background(), owner, "Clipboard image.png", "image/png", []byte("png"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	download := call(owner, "/api/outbox/"+image.ID, "")
+	if download.Code != 200 || download.Header().Get("Content-Type") != "image/png" {
+		t.Fatalf("clipboard image MIME type was not preserved: %d %q", download.Code, download.Header().Get("Content-Type"))
+	}
 }
