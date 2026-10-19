@@ -245,7 +245,7 @@ function renderSend() {
     await action(files, 'SendFiles', [recipient.value]);
     files.textContent = 'Choose files';
   } }, icon('file', 17), 'Choose files');
-  const clipboard = el('button', { disabled: !devices.length, onclick: () => action(clipboard, 'SendClipboardText', [recipient.value]) }, 'Send clipboard text');
+  const clipboard = el('button', { disabled: !devices.length, onclick: () => action(clipboard, 'SendClipboard', [recipient.value]) }, 'Send clipboard');
   const rows = (state.outbox || []).map(item => {
     const device = devices.find(device => device.id === item.deviceId);
     const remove = el('button', { class: 'icon-button', 'aria-label': `Remove ${item.name}`, onclick: () => action(remove, 'RemoveOutgoing', [item.id]) }, icon('close', 16));

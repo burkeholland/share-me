@@ -126,16 +126,14 @@ function renderSend() {
   const send = el('button', { class: 'primary', type: 'submit' }, 'Send', icon('arrow', 17));
   const cancel = el('button', { type: 'button', hidden: true, onclick: () => textRequest?.abort() }, 'Cancel');
   const textStatus = el('span', { class: 'meta', role: 'status' });
-  const textForm = el('form', { class: 'text-compose', onsubmit: async event => {
-    event.preventDefault();
-    const text = textarea.value;
+  const sendText = async text => {
     if (!text.trim()) {
       textarea.focus();
-      return;
+      return false;
     }
     if (new TextEncoder().encode(text).length > 65536) {
       toast('Text is limited to 64 KB. Send a file instead.', true);
-      return;
+      return false;
     }
     textRequest = new AbortController();
     send.disabled = textarea.disabled = true;
@@ -149,6 +147,7 @@ function renderSend() {
       });
       textarea.value = '';
       textStatus.textContent = 'Received';
+      return true;
     } catch (error) {
       if (error.name === 'DeclinedError') textStatus.textContent = 'Declined on PC';
       else if (error.name === 'AbortError') textStatus.textContent = 'Cancelled';
@@ -156,12 +155,66 @@ function renderSend() {
         textStatus.textContent = 'Not received';
         toast(errorMessage(error), true);
       }
+      return false;
     } finally {
       textRequest = null;
       send.disabled = textarea.disabled = false;
       cancel.hidden = true;
     }
+  };
+  const textForm = el('form', { class: 'text-compose', onsubmit: async event => {
+    event.preventDefault();
+    await sendText(textarea.value);
   } }, textarea, el('div', { class: 'send-actions' }, textStatus, el('div', { class: 'cluster' }, cancel, send)));
+  const paste = el('button', {
+    class: 'send-picker clipboard-picker', type: 'button',
+    onclick: async () => {
+      paste.disabled = true;
+      try {
+        const clipboard = navigator.clipboard;
+        if (!clipboard?.read && !clipboard?.readText) {
+          throw new Error('This browser does not allow Share Me to read the clipboard. Use Photos, Files, or the text box instead.');
+        }
+        if (!clipboard.read) {
+          const text = await clipboard.readText();
+          if (!text.trim()) throw new Error('The clipboard contains no text this browser can share.');
+          textarea.value = text;
+          await sendText(text);
+          return;
+        }
+        const items = await clipboard.read();
+        const files = [];
+        let text = '';
+        const imageTypes = ['image/png', 'image/jpeg', 'image/gif', 'image/webp', 'image/heic', 'image/heif'];
+        for (const item of items) {
+          const imageType = item.types.find(type => imageTypes.includes(type));
+          if (imageType) {
+            const blob = await item.getType(imageType);
+            const extension = imageType.split('/')[1].replace('jpeg', 'jpg');
+            files.push(new File([blob], `Clipboard image${items.length > 1 ? ` ${files.length + 1}` : ''}.${extension}`, { type: imageType }));
+          } else if (!text && item.types.includes('text/plain')) {
+            text = await (await item.getType('text/plain')).text();
+          }
+        }
+        if (files.length) {
+          queueFiles(files);
+        } else if (text.trim()) {
+          textarea.value = text;
+          await sendText(text);
+        } else {
+          throw new Error('The clipboard format is not supported. Share text or a PNG, JPEG, GIF, WebP, HEIC, or HEIF image.');
+        }
+      } catch (error) {
+        if (error.name === 'NotAllowedError') {
+          toast('Clipboard access was denied. Allow it in browser settings, or use Photos or Files.', true);
+        } else {
+          toast(errorMessage(error), true);
+        }
+      } finally {
+        paste.disabled = false;
+      }
+    },
+  }, icon('copy', 28), el('strong', {}, 'Paste from clipboard'));
   content.replaceChildren(
     window.shareMePeer ? el('section', { id: 'receive-panel', class: 'receive-panel', 'aria-label': 'Transfers from PC', 'aria-live': 'polite' }) : null,
     el('div', { class: 'phone-heading' },
@@ -169,7 +222,8 @@ function renderSend() {
       el('p', { class: 'mono muted address-caption' }, location.host)),
     el('section', { class: 'file-pickers', 'aria-label': 'Send files' },
       el('label', { class: 'send-picker' }, photoInput, icon('photo', 28), el('strong', {}, 'Photos')),
-      el('label', { class: 'send-picker' }, fileInput, icon('file', 28), el('strong', {}, 'Files'))),
+      el('label', { class: 'send-picker' }, fileInput, icon('file', 28), el('strong', {}, 'Files')),
+      paste),
     el('div', { id: 'upload-queue', class: 'upload-queue', 'aria-live': 'polite' }),
     textForm,
     el('footer', { class: 'phone-footer minimal-phone-footer' },
@@ -232,6 +286,10 @@ async function refreshOffers() {
 function addFiles(input) {
   const files = [...input.files];
   input.value = '';
+  queueFiles(files);
+}
+
+function queueFiles(files) {
   if (queue.filter(item => ['waiting', 'approving', 'sending'].includes(item.state)).length + files.length > 50) {
     toast('Send up to 50 files at a time.', true);
     return;

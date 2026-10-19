@@ -1,6 +1,7 @@
 package outbox
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io"
@@ -81,5 +82,37 @@ func TestOutboxValidationAndCancellation(t *testing.T) {
 	}
 	if _, _, err := store.Open(phone, "../../escape"); !errors.Is(err, os.ErrNotExist) {
 		t.Fatal("arbitrary path was accepted")
+	}
+}
+
+func TestAddDataPreservesClipboardImageAndMIME(t *testing.T) {
+	dir := t.TempDir()
+	store, err := New(dir, 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := []byte{0x89, 'P', 'N', 'G', 0, 1, 2, 3}
+	item, err := store.AddData(context.Background(), phone, "Clipboard image.png", "image/png", data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if item.Kind != "file" || item.Name != "Clipboard image.png" || item.MIME != "image/png" {
+		t.Fatalf("unexpected clipboard item: %+v", item)
+	}
+	reopened, err := New(dir, 1024)
+	if err != nil {
+		t.Fatal(err)
+	}
+	persisted, file, err := reopened.Open(phone, item.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	got, err := io.ReadAll(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if persisted.MIME != "image/png" || !bytes.Equal(got, data) {
+		t.Fatal("clipboard image bytes or MIME type changed")
 	}
 }

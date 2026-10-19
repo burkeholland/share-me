@@ -2,6 +2,7 @@
 package outbox
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
@@ -9,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"mime"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +28,7 @@ type Item struct {
 	Kind      string    `json:"kind"`
 	Name      string    `json:"name"`
 	Size      int64     `json:"size"`
+	MIME      string    `json:"mime,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -63,7 +66,7 @@ func New(dir string, maxFile int64) (*Store, error) {
 	for _, item := range s.items {
 		if !validID(item.ID) || !validID(item.DeviceID) || seen[item.ID] ||
 			(item.Kind != "file" && item.Kind != "text") || !validName(item.Name) ||
-			item.Size < 0 || item.Size > maxFile || item.CreatedAt.IsZero() {
+			item.Size < 0 || item.Size > maxFile || !validMIME(item.MIME) || item.CreatedAt.IsZero() {
 			return nil, errors.New("outbox index contains an invalid item")
 		}
 		seen[item.ID] = true
@@ -100,6 +103,14 @@ func validName(name string) bool {
 		!strings.ContainsAny(name, "/\\\x00\r\n")
 }
 
+func validMIME(value string) bool {
+	if value == "" {
+		return true
+	}
+	mediaType, _, err := mime.ParseMediaType(value)
+	return err == nil && mediaType != "" && len(value) <= 255
+}
+
 func (s *Store) path(id string) string { return filepath.Join(s.dir, id+".data") }
 
 func (s *Store) List(device string) []Item {
@@ -127,7 +138,7 @@ func (s *Store) AddFile(ctx context.Context, device, path string) (Item, error) 
 	if !info.Mode().IsRegular() {
 		return Item{}, errors.New("choose a regular file, not a folder or device")
 	}
-	return s.add(ctx, device, "file", filepath.Base(path), info.Size(), file, func() error {
+	return s.add(ctx, device, "file", filepath.Base(path), info.Size(), "", file, func() error {
 		current, err := file.Stat()
 		if err != nil {
 			return err
@@ -143,11 +154,15 @@ func (s *Store) AddText(ctx context.Context, device, text string) (Item, error) 
 	if !utf8.ValidString(text) || strings.TrimSpace(text) == "" || len(text) > 64<<10 {
 		return Item{}, errors.New("text must be nonblank UTF-8 and at most 64 KB")
 	}
-	return s.add(ctx, device, "text", "Text", int64(len(text)), strings.NewReader(text), nil)
+	return s.add(ctx, device, "text", "Text", int64(len(text)), "text/plain", strings.NewReader(text), nil)
 }
 
-func (s *Store) add(ctx context.Context, device, kind, name string, size int64, source io.Reader, verify func() error) (item Item, result error) {
-	if !validID(device) || !validName(name) || size < 0 || size > s.maxFile {
+func (s *Store) AddData(ctx context.Context, device, name, mimeType string, data []byte) (Item, error) {
+	return s.add(ctx, device, "file", name, int64(len(data)), mimeType, bytes.NewReader(data), nil)
+}
+
+func (s *Store) add(ctx context.Context, device, kind, name string, size int64, mimeType string, source io.Reader, verify func() error) (item Item, result error) {
+	if !validID(device) || !validName(name) || size < 0 || size > s.maxFile || !validMIME(mimeType) {
 		return Item{}, errors.New("invalid recipient, filename, or file size")
 	}
 	var random [16]byte
@@ -211,7 +226,7 @@ func (s *Store) add(ctx context.Context, device, kind, name string, size int64, 
 	if err := ctx.Err(); err != nil {
 		return Item{}, err
 	}
-	item = Item{ID: id, DeviceID: device, Kind: kind, Name: name, Size: size, CreatedAt: time.Now().UTC()}
+	item = Item{ID: id, DeviceID: device, Kind: kind, Name: name, Size: size, MIME: mimeType, CreatedAt: time.Now().UTC()}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := os.Rename(stage, s.path(id)); err != nil {

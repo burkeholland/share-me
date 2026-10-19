@@ -128,6 +128,7 @@ dialog pre { background: var(--cp-surface); border: 1px solid var(--cp-border); 
 .send-picker input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .send-picker:focus-within { outline: 3px solid var(--cp-accent); outline-offset: 3px; }
 .send-picker strong { font-size: 16px; font-weight: 600; }
+.clipboard-picker { grid-column: 1 / -1; min-height: 76px; flex-direction: row; width: 100%; }
 .text-compose { margin-top: var(--space-6); }
 .send-actions { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); margin-top: var(--space-3); }
 .phone-shell button { min-height: 44px; }
