@@ -83,11 +83,15 @@ func (s *Service) serveOutbox(w http.ResponseWriter, r *http.Request, id string)
 			Kind      string    `json:"kind"`
 			Name      string    `json:"name"`
 			Size      int64     `json:"size"`
+			MIME      string    `json:"mime"`
 			CreatedAt time.Time `json:"createdAt"`
 		}
 		items := []offer{}
 		for _, item := range s.config.Outbox.List(device) {
-			items = append(items, offer{item.ID, item.Kind, item.Name, item.Size, item.CreatedAt})
+			items = append(items, offer{
+				ID: item.ID, Kind: item.Kind, Name: item.Name, Size: item.Size,
+				MIME: item.MIME, CreatedAt: item.CreatedAt,
+			})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"items": items})
 		return
@@ -104,9 +108,6 @@ func (s *Service) serveOutbox(w http.ResponseWriter, r *http.Request, id string)
 	}
 	defer file.Close()
 	w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{"filename": item.Name}))
-	w.Header().Set("Content-Type", "application/octet-stream")
-	if item.Kind == "text" {
-		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
-	}
+	w.Header().Set("Content-Type", item.MIME)
 	http.ServeContent(w, r, item.Name, item.CreatedAt, file)
 }

@@ -130,13 +130,45 @@ test.describe('encrypted browser transfers', () => {
     const bytes = Buffer.alloc(2 << 20, 'x');
     await writeFile(outgoing, bytes);
     peer.command({ device: device.id, file: outgoing });
-    await expect(page.getByRole('button', { name: 'Accept Transfer', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Accept Transfer', exact: true }).first()).toBeVisible();
     const downloadEvent = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Accept Transfer', exact: true }).click();
     const download = await downloadEvent;
     expect(download.suggestedFilename()).toBe('outgoing.txt');
     const downloaded = await download.path();
     expect((await readFile(downloaded)).equals(bytes)).toBe(true);
+
+    await page.evaluate(() => {
+      Object.defineProperty(navigator, 'canShare', {
+        configurable: true, value: value => value.files?.[0]?.type === 'image/jpeg',
+      });
+      Object.defineProperty(navigator, 'share', {
+        configurable: true,
+        value: async value => {
+          const file = value.files[0];
+          window.sharedImage = {
+            name: file.name,
+            type: file.type,
+            bytes: [...new Uint8Array(await file.arrayBuffer())],
+          };
+        },
+      });
+    });
+    const outgoingImage = join(peer.dir, 'outgoing.jpg');
+    const imageBytes = Buffer.from([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 4]);
+    await writeFile(outgoingImage, imageBytes);
+    peer.command({ device: device.id, file: outgoingImage });
+    const imageCard = page.locator('.receive-card').filter({ hasText: 'outgoing.jpg' });
+    await expect(imageCard.getByRole('button', { name: 'Accept Transfer' })).toBeVisible();
+    await imageCard.getByRole('button', { name: 'Accept Transfer' }).click();
+    await expect(imageCard.getByRole('button', { name: 'Save to Photos' })).toBeVisible();
+    await imageCard.getByRole('button', { name: 'Save to Photos' }).click();
+    await expect(imageCard.getByText('Share sheet closed', { exact: true })).toBeVisible();
+    expect(await page.evaluate(() => window.sharedImage)).toEqual({
+      name: 'outgoing.jpg',
+      type: 'image/jpeg',
+      bytes: [...imageBytes],
+    });
 
     const resumeURL = page.url();
     await page.evaluate(() => new Promise((resolve, reject) => {
@@ -161,7 +193,7 @@ test.describe('encrypted browser transfers', () => {
     await page.goto(origin);
     await expect(page.getByRole('heading', { name: 'Send to PC', exact: true })).toBeVisible({ timeout: 20000 });
     expect(peer.state().pairs).toHaveLength(0);
-    await expect(page.getByRole('button', { name: 'Accept Transfer', exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Accept Transfer', exact: true }).first()).toBeVisible();
     const stranger = await browser.newContext();
     try {
       const guest = await stranger.newPage();

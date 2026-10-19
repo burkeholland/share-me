@@ -1,6 +1,8 @@
 import { el, brand, errorMessage } from './shared.js';
 import { connectPC, storedPCs } from './peer-client.js';
-import { initializeSaving, acceptOutgoing, activeSaves } from './save-transfer.js';
+import {
+  initializeSaving, acceptOutgoing, activeSaves, canShareImage, shareImage, downloadFile,
+} from './save-transfer.js';
 
 const root = document.getElementById('app');
 const params = new URLSearchParams(location.hash.slice(1));
@@ -32,7 +34,7 @@ async function connect() {
     window.shareMePeer = {
       ...transport,
       acceptOutgoing: item => acceptOutgoing(transport, item),
-      activeSaves,
+      activeSaves, canShareImage, shareImage, downloadFile,
     };
     initializeSaving().catch(error => {
       window.dispatchEvent(new CustomEvent('peer:save-error', { detail: errorMessage(error) }));

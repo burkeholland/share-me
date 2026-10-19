@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -26,6 +27,7 @@ type Item struct {
 	Kind      string    `json:"kind"`
 	Name      string    `json:"name"`
 	Size      int64     `json:"size"`
+	MIME      string    `json:"mime,omitempty"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -60,7 +62,9 @@ func New(dir string, maxFile int64) (*Store, error) {
 	}
 	var total int64
 	seen := map[string]bool{}
-	for _, item := range s.items {
+	indexChanged := false
+	for index := range s.items {
+		item := &s.items[index]
 		if !validID(item.ID) || !validID(item.DeviceID) || seen[item.ID] ||
 			(item.Kind != "file" && item.Kind != "text") || !validName(item.Name) ||
 			item.Size < 0 || item.Size > maxFile || item.CreatedAt.IsZero() {
@@ -71,6 +75,22 @@ func New(dir string, maxFile int64) (*Store, error) {
 		info, err := os.Lstat(s.path(item.ID))
 		if err != nil || !info.Mode().IsRegular() || info.Size() != item.Size {
 			return nil, fmt.Errorf("outbox snapshot %s is missing or changed", item.ID)
+		}
+		mimeType := "text/plain; charset=utf-8"
+		if item.Kind == "file" {
+			file, err := os.Open(s.path(item.ID))
+			if err != nil {
+				return nil, err
+			}
+			mimeType, err = detectFileMIME(file)
+			closeErr := file.Close()
+			if err = errors.Join(err, closeErr); err != nil {
+				return nil, fmt.Errorf("inspect outbox snapshot %s: %w", item.ID, err)
+			}
+		}
+		if item.MIME != mimeType {
+			item.MIME = mimeType
+			indexChanged = true
 		}
 	}
 	if len(s.items) > MaxItems || total > MaxBytes {
@@ -90,6 +110,11 @@ func New(dir string, maxFile int64) (*Store, error) {
 			if err := os.Remove(filepath.Join(dir, name)); err != nil {
 				return nil, fmt.Errorf("clean interrupted outbox preparation: %w", err)
 			}
+		}
+	}
+	if indexChanged {
+		if err := s.save(s.items); err != nil {
+			return nil, fmt.Errorf("update outbox metadata: %w", err)
 		}
 	}
 	return s, nil
@@ -127,7 +152,7 @@ func (s *Store) AddFile(ctx context.Context, device, path string) (Item, error) 
 	if !info.Mode().IsRegular() {
 		return Item{}, errors.New("choose a regular file, not a folder or device")
 	}
-	return s.add(ctx, device, "file", filepath.Base(path), info.Size(), file, func() error {
+	return s.add(ctx, device, "file", filepath.Base(path), info.Size(), "", file, func() error {
 		current, err := file.Stat()
 		if err != nil {
 			return err
@@ -143,11 +168,12 @@ func (s *Store) AddText(ctx context.Context, device, text string) (Item, error) 
 	if !utf8.ValidString(text) || strings.TrimSpace(text) == "" || len(text) > 64<<10 {
 		return Item{}, errors.New("text must be nonblank UTF-8 and at most 64 KB")
 	}
-	return s.add(ctx, device, "text", "Text", int64(len(text)), strings.NewReader(text), nil)
+	return s.add(ctx, device, "text", "Text", int64(len(text)), "text/plain; charset=utf-8", strings.NewReader(text), nil)
 }
 
-func (s *Store) add(ctx context.Context, device, kind, name string, size int64, source io.Reader, verify func() error) (item Item, result error) {
-	if !validID(device) || !validName(name) || size < 0 || size > s.maxFile {
+func (s *Store) add(ctx context.Context, device, kind, name string, size int64, mimeType string, source io.Reader, verify func() error) (item Item, result error) {
+	if !validID(device) || !validName(name) || size < 0 || size > s.maxFile ||
+		(kind == "text" && mimeType == "") {
 		return Item{}, errors.New("invalid recipient, filename, or file size")
 	}
 	var random [16]byte
@@ -208,10 +234,21 @@ func (s *Store) add(ctx context.Context, device, kind, name string, size int64, 
 	if err != nil {
 		return Item{}, err
 	}
+	if kind == "file" {
+		snapshot, err := os.Open(stage)
+		if err != nil {
+			return Item{}, err
+		}
+		mimeType, err = detectFileMIME(snapshot)
+		closeErr := snapshot.Close()
+		if err = errors.Join(err, closeErr); err != nil {
+			return Item{}, fmt.Errorf("inspect outgoing snapshot: %w", err)
+		}
+	}
 	if err := ctx.Err(); err != nil {
 		return Item{}, err
 	}
-	item = Item{ID: id, DeviceID: device, Kind: kind, Name: name, Size: size, CreatedAt: time.Now().UTC()}
+	item = Item{ID: id, DeviceID: device, Kind: kind, Name: name, Size: size, MIME: mimeType, CreatedAt: time.Now().UTC()}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if err := os.Rename(stage, s.path(id)); err != nil {
@@ -223,6 +260,31 @@ func (s *Store) add(ctx context.Context, device, kind, name string, size int64, 
 	}
 	s.items = next
 	return item, nil
+}
+
+func detectFileMIME(file *os.File) (string, error) {
+	var header [512]byte
+	n, err := file.Read(header[:])
+	if err != nil && !errors.Is(err, io.EOF) {
+		return "", err
+	}
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return "", err
+	}
+	data := header[:n]
+	if len(data) >= 12 && string(data[4:8]) == "ftyp" {
+		for offset := 8; offset+4 <= len(data) && offset < 64; offset += 4 {
+			switch string(data[offset : offset+4]) {
+			case "avif", "avis":
+				return "image/avif", nil
+			case "heic", "heix", "hevc", "hevx":
+				return "image/heic", nil
+			case "mif1", "msf1":
+				return "image/heif", nil
+			}
+		}
+	}
+	return http.DetectContentType(data), nil
 }
 
 type contextReader struct {

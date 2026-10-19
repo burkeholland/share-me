@@ -7,6 +7,34 @@ export function initializeSaving() {
   return setup;
 }
 
+export function canShareImage(file) {
+  if (!(file instanceof File) || !file.type.startsWith('image/') || typeof navigator.share !== 'function') return false;
+  try {
+    return typeof navigator.canShare !== 'function' || navigator.canShare({ files: [file] });
+  } catch {
+    return false;
+  }
+}
+
+export async function shareImage(file) {
+  if (!canShareImage(file)) {
+    throw new Error('Saving to Photos is unavailable in this browser. Use Download instead.');
+  }
+  await navigator.share({ files: [file] });
+}
+
+export function downloadFile(file) {
+  const url = URL.createObjectURL(file);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = file.name;
+  link.hidden = true;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
 async function prepareSaving() {
   if (!('serviceWorker' in navigator)) throw new Error('This browser cannot save streamed transfers.');
   await navigator.serviceWorker.register('/save-worker.js', { scope: '/' });
@@ -42,6 +70,7 @@ export async function acceptOutgoing(transport, item) {
     }
     return { text: await response.text() };
   }
+  if (item.mime?.startsWith('image/')) return receiveImage(transport, item);
   await initializeSaving();
   const channel = new MessageChannel();
   const token = crypto.randomUUID().replaceAll('-', '');
@@ -113,4 +142,24 @@ export async function acceptOutgoing(transport, item) {
   frame.src = `/receive/${token}/${encodeURIComponent(item.name)}`;
   document.body.append(frame);
   return { accepted: true };
+}
+
+async function receiveImage(transport, item) {
+  const token = crypto.randomUUID().replaceAll('-', '');
+  const abort = new AbortController();
+  active.add(token);
+  try {
+    const response = await transport.fetch(`/api/outbox/${item.id}`, { signal: abort.signal });
+    const length = Number(response.headers.get('Content-Length'));
+    const mime = response.headers.get('Content-Type')?.split(';', 1)[0].trim().toLowerCase();
+    if (!response.ok || length !== item.size || mime !== item.mime.toLowerCase()) {
+      await response.body?.cancel();
+      throw new Error('This transfer is unavailable or changed. Accept it again.');
+    }
+    const blob = await response.blob();
+    if (blob.size !== item.size) throw new Error('The image transfer was incomplete. Accept it again.');
+    return { file: new File([blob], item.name, { type: item.mime }) };
+  } finally {
+    active.delete(token);
+  }
 }

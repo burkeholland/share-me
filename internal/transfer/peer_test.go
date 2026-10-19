@@ -57,9 +57,13 @@ func TestOutboxRoutesRequireAuthenticatedConnectionIdentity(t *testing.T) {
 	if _, leaked := response["items"][0]["deviceId"]; leaked {
 		t.Fatal("internal recipient data leaked")
 	}
+	if response["items"][0]["mime"] != "text/plain; charset=utf-8" {
+		t.Fatal("recipient did not receive trusted content type")
+	}
 	partial := call(owner, "/api/outbox/"+item.ID, "bytes=0-3")
 	if partial.Code != 206 || partial.Body.String() != "only" ||
-		!strings.HasPrefix(partial.Header().Get("Content-Disposition"), "attachment;") {
+		!strings.HasPrefix(partial.Header().Get("Content-Disposition"), "attachment;") ||
+		partial.Header().Get("Content-Type") != "text/plain; charset=utf-8" {
 		t.Fatal("attachment retry/range support failed")
 	}
 }

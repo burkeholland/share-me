@@ -9,7 +9,7 @@ Send files and text between Windows and an iPhone browser or Home Screen web app
 3. Click **Connect** on Windows to remember this phone's browser.
 4. On the phone, choose photos or files, or send text. Click **Accept** on Windows.
 
-For **Windows to phone**, open **Send**, select a paired phone, and choose files or **Send clipboard text**. Open the phone page and press **Accept Transfer**. Files use the browser's normal save controls; text can be copied explicitly. Nothing is silently saved to Photos or the clipboard.
+For **Windows to phone**, open **Send**, select a paired phone, and choose files or **Send clipboard text**. Open the phone page and press **Accept Transfer**. Received images then show **Save to Photos**, which opens the iPhone share sheet so you can choose **Save Image**. Other files use the browser's normal save controls, and text can be copied explicitly. Nothing is silently saved to Photos or the clipboard.
 
 Pairing is once per browser or installed Home Screen app. The initial QR contains a one-use invitation in its URL fragment; it is not sent to Cloudflare. No code needs to be typed. After pairing, save the phone page as a bookmark or choose **Add to Home Screen**. The saved URL contains a fragment-only reconnect credential so iOS can initialize the Home Screen app's separate storage; fragments are not included in HTTP requests or referrers. Treat the saved URL like a password and do not share it. Use **Add phone** to pair another browser, and **Settings > Phones > Forget** to revoke one. Private browsing, clearing website data, or changing browsers requires pairing again.
 
