@@ -197,6 +197,17 @@ func obfuscateHostCandidates(sdp string) string {
 	return strings.Join(lines, "\r\n")
 }
 
+func omitHostCandidates(sdp string) string {
+	lines := strings.Split(strings.ReplaceAll(sdp, "\r\n", "\n"), "\n")
+	filtered := make([]string, 0, len(lines))
+	for _, line := range lines {
+		if !strings.HasPrefix(line, "a=candidate:") {
+			filtered = append(filtered, line)
+		}
+	}
+	return strings.Join(filtered, "\r\n")
+}
+
 func (g *testGuest) message(t *testing.T, kind string) controlMessage {
 	t.Helper()
 	select {
@@ -405,6 +416,44 @@ func TestPionConnectsWhenBrowserHostCandidateUsesMDNS(t *testing.T) {
 	invite := append([]byte(nil), e.invite...)
 	e.mu.Unlock()
 	connectGuestWithOffer(t, e, broker, host, "pair", invite, obfuscateHostCandidates)
+	waitFor(t, func() bool { return len(e.PairRequests()) == 1 })
+	request := e.PairRequests()[0]
+	if request.Source != "127.0.0.1" {
+		t.Fatalf("peer-reflexive address was not attributed: %+v", request)
+	}
+	if err = e.DecidePair(request.ID, false); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPionConnectsWhenBrowserOmitsHostCandidates(t *testing.T) {
+	broker := newTestBroker(t)
+	e, err := newEngine(Config{
+		DataDir: testDir(t), ServiceURL: broker.server.URL, LocalIP: "127.0.0.1", AllowLoopback: true,
+		OnError: func(err error) { t.Logf("peer: %v", err) },
+	}, newTestProtector(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = e.Close() })
+	if err = e.Start(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	var host *signalSocket
+	select {
+	case host = <-broker.hosts:
+	case err := <-broker.errors:
+		t.Fatal(err)
+	case <-time.After(10 * time.Second):
+		t.Fatal("native signaling connection timed out")
+	}
+	if _, err = e.BeginPairing(); err != nil {
+		t.Fatal(err)
+	}
+	e.mu.Lock()
+	invite := append([]byte(nil), e.invite...)
+	e.mu.Unlock()
+	connectGuestWithOffer(t, e, broker, host, "pair", invite, omitHostCandidates)
 	waitFor(t, func() bool { return len(e.PairRequests()) == 1 })
 	request := e.PairRequests()[0]
 	if request.Source != "127.0.0.1" {

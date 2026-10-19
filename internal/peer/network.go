@@ -124,7 +124,10 @@ func (e *Engine) filterOffer(ctx context.Context, sdp string) (string, error) {
 		result = append(result, strings.Join(fields, " "))
 		usable++
 	}
-	if media != 1 || usable == 0 {
+	// Safari can omit host candidates from SDP while still sending checks after
+	// it receives our answer. Pion then discovers the permitted peer-reflexive
+	// address through the remote IP filter.
+	if media != 1 || candidates > 0 && usable == 0 {
 		return "", errors.New("offer has no permitted private LAN candidates")
 	}
 	return strings.Join(result, "\r\n") + "\r\n", nil
